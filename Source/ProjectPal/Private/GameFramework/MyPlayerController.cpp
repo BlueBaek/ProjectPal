@@ -6,7 +6,6 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Character/Player/PlayerCharacter.h"
-#include "GameFramework/MyPlayerState.h"
 
 AMyPlayerController::AMyPlayerController()
 {
@@ -14,53 +13,62 @@ AMyPlayerController::AMyPlayerController()
 
 void AMyPlayerController::UpdateInputContext()
 {
-	// 상태 정보 받아오기
-	AMyPlayerState* PS = GetPlayerState<AMyPlayerState>();
-	ULocalPlayer* player = GetLocalPlayer();
-	
-	if (!PS || !player) return;
-	
-	// Local Player에서 EnhancedInputLocalPlayerSubsystem을 얻어옴
-	UEnhancedInputLocalPlayerSubsystem* Subsystem = player->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
-	if (!Subsystem) return;
-	
+	ULocalPlayer* LocalPlayer = GetLocalPlayer();
+	APlayerCharacter* PlayerCharacter = Cast<APlayerCharacter>(GetPawn());
+	UEnhancedInputLocalPlayerSubsystem* Subsystem = LocalPlayer->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
+	if (!LocalPlayer || !PlayerCharacter || !Subsystem) return;
+
 	// 현재 적용중인 IMC를 제거 (중복 방지)
-	Subsystem->ClearAllMappings();
-	
+	// 개선 필요함 (다른 IMC까지 지울 수 있음)
+	// Subsystem->ClearAllMappings();
+
+	// 원하는 상태 IMC 결정
+	UInputMappingContext* DesiredStateIMC = nullptr;
+
 	// 현재 상태에 따라 적절한 IMC 할당
-	if (PS->GetActionState() == EMyPlayerState::Rolling)
+	if (PlayerCharacter->GetActionState() == EMyActionState::Rolling)
 	{
-		if (RollingIMC)
-		{
-			Subsystem->AddMappingContext(RollingIMC, 0);
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("Input Mode: Rolling"));
-		}
+		if (RollingIMC) { DesiredStateIMC = RollingIMC; }
 	}
+	/*else if (Player->GetActionState() == EMyActionState::...)*/
 	else
 	{
-		if (IdleIMC)
-		{
-			Subsystem->AddMappingContext(IdleIMC, 0);
-			GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Cyan, TEXT("Input Mode: Idle"));
-		}
+		if (RollingIMC) { DesiredStateIMC = IdleIMC; }
+	}
+	
+	// 현재 IMC와 들어온 IMC 비교하여 같으면 return
+	if (DesiredStateIMC == CurrentStateIMC) return;
+	
+	// 기존 상태 IMC만 제거
+	if (CurrentStateIMC)
+	{
+		Subsystem->RemoveMappingContext(CurrentStateIMC);
+		CurrentStateIMC = nullptr;
+	}
+	
+	// 새 상태 IMC만 추가
+	if (DesiredStateIMC)
+	{
+		Subsystem->AddMappingContext(DesiredStateIMC, StateIMCPriority);
+		CurrentStateIMC = DesiredStateIMC;
 	}
 }
 
 void AMyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// 현재 PlayerController에 연결된 Local Player 객체를 가져옴
 	ULocalPlayer* player = GetLocalPlayer();
 	if (!player) return;
-	
+
 	// Local Player에서 EnhancedInputLocalPlayerSubsystem을 얻어옴
 	UEnhancedInputLocalPlayerSubsystem* Subsystem = player->GetSubsystem<UEnhancedInputLocalPlayerSubsystem>();
 	if (!Subsystem) return;
 	if (!IdleIMC) return;
-	
+
 	// Subsystem을 통해 할당한 InputMappingContext를 활성화
-	Subsystem->AddMappingContext(IdleIMC, 0);	// Priority : 0 -> 우선순위가 가장 높음
+	Subsystem->AddMappingContext(IdleIMC, 0); // Priority : 0 -> 우선순위가 가장 높음
 }
 
 void AMyPlayerController::SetupInputComponent()
@@ -69,23 +77,30 @@ void AMyPlayerController::SetupInputComponent()
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
 		// Move & Look
-		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this, &AMyPlayerController::Input_Move);
-		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this, &AMyPlayerController::Input_Look);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this,
+		                                   &AMyPlayerController::Input_Move);
+		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this,
+		                                   &AMyPlayerController::Input_Look);
 
 		// Jump
 		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Started, this, &AMyPlayerController::Input_Jump);
-		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this, &AMyPlayerController::Input_StopJump);
+		EnhancedInputComponent->BindAction(JumpAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_StopJump);
 
 		// Sprint
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this, &AMyPlayerController::Input_StartSprint);
-		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this, &AMyPlayerController::Input_StopSprint);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Started, this,
+		                                   &AMyPlayerController::Input_StartSprint);
+		EnhancedInputComponent->BindAction(SprintAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_StopSprint);
 
 		// Roll
 		EnhancedInputComponent->BindAction(RollAction, ETriggerEvent::Started, this, &AMyPlayerController::Input_Roll);
-		
+
 		// Zoom
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this, &AMyPlayerController::Input_StartAim);
-		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this, &AMyPlayerController::Input_StopAim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this,
+		                                   &AMyPlayerController::Input_StartAim);
+		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_StopAim);
 	}
 }
 
@@ -160,5 +175,3 @@ void AMyPlayerController::Input_StopAim()
 		ControlledChar->SetAiming(false);
 	}
 }
-
-

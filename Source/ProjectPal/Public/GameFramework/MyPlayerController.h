@@ -12,6 +12,7 @@
 struct FInputActionValue;
 class UInputMappingContext;
 class UInputAction;
+class UEnhancedInputLocalPlayerSubsystem;
 
 UCLASS()
 class PROJECTPAL_API AMyPlayerController : public APlayerController
@@ -52,6 +53,14 @@ protected:
 	
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* AimAction;
+	
+	// 현재 적용 중인 “상태 IMC”를 추적해서, 이것만 안전하게 교체
+	UPROPERTY(Transient)	// 디스크 저장 제외(불필요한 데이터 낭비를 막음)
+	TObjectPtr<UInputMappingContext> CurrentStateIMC = nullptr;
+
+	// 상태 IMC 우선순위 (필요하면 조절)
+	UPROPERTY(EditDefaultsOnly, Category="Input")
+	int32 StateIMCPriority = 0;
 
 	// --- 입력 처리 함수들 ---
 	void Input_Move(const FInputActionValue& Value);
