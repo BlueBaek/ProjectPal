@@ -8,7 +8,6 @@
 #include "EnhancedInputSubsystems.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/MyPlayerController.h"
-#include "KismetAnimationLibrary.h" // CalculateDirection을 위해 필요
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -53,9 +52,22 @@ APlayerCharacter::APlayerCharacter()
 	GetCharacterMovement()->BrakingDecelerationWalking = 2000.f; // 제동속도
 
 	// 구르기 몽타주 에셋 로드
+	// 앞
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollMontageAsset(
 		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_Anim_RollFwd.AM_Pal_Player_Anim_RollFwd"));
 	if (RollMontageAsset.Succeeded()) { RollMontage = RollMontageAsset.Object; }
+	// 뒤
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollBwdMontageAsset(
+		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_FlipBwd.AM_Pal_Player_FlipBwd"));
+	if (RollBwdMontageAsset.Succeeded()) { RollBwdMontage = RollBwdMontageAsset.Object; }
+	// 왼쪽
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollLeftMontageAsset(
+		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_RollLeft.AM_Pal_Player_RollLeft"));
+	if (RollLeftMontageAsset.Succeeded()) { RollLeftMontage = RollLeftMontageAsset.Object; }
+	// 오른쪽
+	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollRightMontageAsset(
+		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
+	if (RollRightMontageAsset.Succeeded()) { RollRightMontage = RollRightMontageAsset.Object; }
 }
 
 // Called when the game starts or when spawned
@@ -76,17 +88,17 @@ void APlayerCharacter::Tick(float DeltaTime)
 	// FInterpTo를 사용해 부드럽게 전환
 	CCamera->FieldOfView = FMath::FInterpTo(CCamera->FieldOfView, TargetFOV, DeltaTime, 10.f);
 	CCameraArm->TargetArmLength = FMath::FInterpTo(CCameraArm->TargetArmLength, TargetArmLength, DeltaTime, 10.f);
-	
+
 	// Tick의 On/Off를 위해 목표치에 도달했는지 체크 (오차 범위 내)
 	bool bFOVReached = FMath::IsNearlyEqual(CCamera->FieldOfView, TargetFOV, 0.1f);
 	bool bArmReached = FMath::IsNearlyEqual(CCameraArm->TargetArmLength, TargetArmLength, 0.1f);
-	
+
 	if (bFOVReached && bArmReached)
 	{
 		// 값을 목표치로 완전히 고정하고 Tick을 끕니다.
 		CCamera->FieldOfView = TargetFOV;
 		CCameraArm->TargetArmLength = TargetArmLength;
-        
+
 		SetActorTickEnabled(false);
 	}
 }
@@ -95,23 +107,20 @@ void APlayerCharacter::SetActionState(EMyActionState NewState)
 {
 	if (ActionState == NewState) return;
 	ActionState = NewState;
-	
+
 	// 필요에 따라 이곳에서 OnStateChanged 델리게이트 브로드캐스트 가능
 }
 
-void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted)
-{
-	if (ActionState != EMyActionState::Rolling) return;
-	SetActionState(EMyActionState::Idle);
-	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
-	{
-		PC->UpdateInputContext();
-	}
-}
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
+
+	// 아주 작은 입력은 0으로 처리(데드존)
+	if (FMath::Abs(MovementVector.X) < 0.1f) MovementVector.X = 0.f;
+	if (FMath::Abs(MovementVector.Y) < 0.1f) MovementVector.Y = 0.f;
+	
+	CurrentMoveInput2D = MovementVector;
 
 	if (Controller)
 	{
@@ -165,26 +174,48 @@ void APlayerCharacter::Roll()
 	if (GetCharacterMovement()->IsFalling()) return;
 	// 이미 구르는 중이면 무시
 	if (ActionState == EMyActionState::Rolling) return;
+	// 몽타주를 실행시킬 Anim인스턴스
+	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	if (!AnimInstance) return;
+	
+	// 구르기 시작 순간 조준 여부를 저장
+	const bool bWasAiming = bIsAiming;
 
-	// --- 즉시 회전 로직 추가 ---
-	// 현재 이동 입력 벡터를 가져옵니다 (MoveAction의 현재 값)
-	// Controller에서 현재 입력 중인 축 값을 확인하거나, 마지막 이동 입력을 참조합니다.
-	FVector LastInput = GetLastMovementInputVector();
-	// 만약 입력이 있다면 (방향키를 누르고 있다면)
-	if (!LastInput.IsNearlyZero())
+	// --- 조준 여부에 따라 사용할 몽타주 결정 ---
+	UAnimMontage* MontageToPlay = RollMontage;	// 실행할 몽타주 선택, 기본값 앞구르기
+	if (bWasAiming)	// 조준 중이면 몽타주 선택
 	{
-		// 입력 방향을 바라보도록 즉시 회전
-		FRotator NewRotation = LastInput.Rotation();
-		NewRotation.Pitch = 0.f;
-		NewRotation.Roll = 0.f;
-		SetActorRotation(NewRotation);
+		MontageToPlay = SelectRollMontage_Aiming();
+	}
+	else	// 그렇지 않으면 기본 구르기(비조준 상태)
+	{
+		// --- 즉시 회전 로직 추가 ---
+		// 현재 이동 입력 벡터를 가져옵니다 (MoveAction의 현재 값)
+		// Controller에서 현재 입력 중인 축 값을 확인하거나, 마지막 이동 입력을 참조합니다.
+		FVector LastInput = GetLastMovementInputVector();
+		// 만약 입력이 있다면 (방향키를 누르고 있다면)
+		if (!LastInput.IsNearlyZero())
+		{
+			// 입력 방향을 바라보도록 즉시 회전
+			FRotator NewRotation = LastInput.Rotation();
+			NewRotation.Pitch = 0.f;
+			NewRotation.Roll = 0.f;
+			SetActorRotation(NewRotation);
+		}
 	}
 
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if (!AnimInstance || !RollMontage) return;
+	// 선택된 몽타주가 없으면 무시
+	if (!MontageToPlay) return;
+
+	// 조준 모드 비활성화
+	if (bWasAiming)
+	{
+		SetAiming(false);
+	}
 	
 	// ActionState 업데이트
 	SetActionState(EMyActionState::Rolling);
+	
 	// IMC 업데이트
 	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
 	{
@@ -192,23 +223,72 @@ void APlayerCharacter::Roll()
 	}
 
 	// 몽타주 실행
-	AnimInstance->Montage_Play(RollMontage, RollSpeed);
+	// AnimInstance->Montage_Play(MontageToPlay, RollSpeed);
+	AnimInstance->Montage_Play(MontageToPlay);
 
 	// 몽타주의 끝을 확인하는 방식을 타이머 대신 델리게이트 방식으로 수정
-	FOnMontageEnded EndDelegate;
+	FOnMontageEnded EndDelegate;	// 몽타주 재생 종료 델리게이트 인스턴스
 	EndDelegate.BindUObject(this, &APlayerCharacter::OnRollMontageEnded);
-	AnimInstance->Montage_SetEndDelegate(EndDelegate, RollMontage);
+	AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
+}
+
+// 구르기 몽타주가 끝났을 때 호출되는 함수
+void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	// ActionState가 Rolling일 때만 작동
+	if (ActionState != EMyActionState::Rolling) return;
+	// ActionState 수정 : Idle
+	SetActionState(EMyActionState::Idle);
+	// MyPlayerController에서 IMC 업데이트
+	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
+	{
+		PC->UpdateInputContext();
+	}
+}
+
+// 조준 모드에서 몽타주 선택 함수
+UAnimMontage* APlayerCharacter::SelectRollMontage_Aiming() const
+{
+	// 방향키 입력 갱신용
+	const FVector2D Input = CurrentMoveInput2D;
+	
+	// 방향입력 없음 : 뒷구르기
+	// 몽타주가 없을 때를 대비해 Return할 때 기존에 만들어 둔 RollMontage 사용(방어적 프로그래밍)
+	if (Input.IsNearlyZero())
+	{
+		return RollBwdMontage ? RollBwdMontage : RollMontage;
+	}
+
+	// 좌 or 좌대각선 : 왼쪽 구르기
+	if (Input.X < 0.f)  // Left or LeftDiagonal
+	{
+		return RollLeftMontage ? RollLeftMontage : RollMontage;
+	}
+	// 우 or 우대각선 : 오른쪽 구르기
+	if (Input.X > 0.f)  // Right or RightDiagonal
+	{
+		return RollRightMontage ? RollRightMontage : RollMontage;
+	}
+
+	// 앞
+	if (Input.Y > 0.f) // Forward
+	{
+		return RollMontage; // 기존 앞구르기
+	}
+	
+	// 뒤 구르기
+	return RollBwdMontage ? RollBwdMontage : RollMontage;
 }
 
 void APlayerCharacter::SetAiming(bool isAiming)
 {
 	bIsAiming = isAiming;
-	
+
 	// 조준 상태가 바뀌면 보간(Interpolation)을 위해 Tick 활성화
 	SetActorTickEnabled(true);
-	
+
 	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
-	if (bIsAiming)	// 조준 중
+	if (bIsAiming) // 조준 중
 	{
 		// 이동 방향으로 자동회전 false
 		GetCharacterMovement()->bOrientRotationToMovement = false;
@@ -217,7 +297,7 @@ void APlayerCharacter::SetAiming(bool isAiming)
 		// 이동 속도 감소
 		GetCharacterMovement()->MaxWalkSpeed = AimWalkSpeed;
 	}
-	else	// 조준 해제
+	else // 조준 해제
 	{
 		// 이동 방향으로 자동회전 true
 		GetCharacterMovement()->bOrientRotationToMovement = true;
@@ -226,7 +306,7 @@ void APlayerCharacter::SetAiming(bool isAiming)
 		// 이동 속도 복구
 		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
 	}
-	
+
 	/* 디버깅용 출력 메세지
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
 	                                 FString::Printf(TEXT("Aiming : %s"), bIsAiming ? TEXT("True") : TEXT("False")));

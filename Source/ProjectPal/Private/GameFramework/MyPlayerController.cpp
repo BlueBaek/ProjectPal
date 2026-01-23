@@ -9,6 +9,7 @@
 
 AMyPlayerController::AMyPlayerController()
 {
+	
 }
 
 void AMyPlayerController::UpdateInputContext()
@@ -35,23 +36,24 @@ void AMyPlayerController::UpdateInputContext()
 	{
 		if (RollingIMC) { DesiredStateIMC = IdleIMC; }
 	}
-	
+
 	// 현재 IMC와 들어온 IMC 비교하여 같으면 return
 	if (DesiredStateIMC == CurrentStateIMC) return;
-	
+
 	// 기존 상태 IMC만 제거
 	if (CurrentStateIMC)
 	{
 		Subsystem->RemoveMappingContext(CurrentStateIMC);
 		CurrentStateIMC = nullptr;
 	}
-	
+
 	// 새 상태 IMC만 추가
 	if (DesiredStateIMC)
 	{
 		Subsystem->AddMappingContext(DesiredStateIMC, StateIMCPriority);
 		CurrentStateIMC = DesiredStateIMC;
 	}
+	
 }
 
 void AMyPlayerController::BeginPlay()
@@ -76,9 +78,15 @@ void AMyPlayerController::SetupInputComponent()
 	Super::SetupInputComponent();
 	if (UEnhancedInputComponent* EnhancedInputComponent = Cast<UEnhancedInputComponent>(InputComponent))
 	{
-		// Move & Look
+		// Move : 키를 뗄때 0이 들어올 수 있도록 Completed와 Canceled 추가
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Triggered, this,
 		                                   &AMyPlayerController::Input_Move);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_Move);
+		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Canceled, this,
+		                                   &AMyPlayerController::Input_Move);
+
+		//Look
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this,
 		                                   &AMyPlayerController::Input_Look);
 
@@ -165,7 +173,7 @@ void AMyPlayerController::Input_StartAim()
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
 		ControlledChar->SetAiming(true);
-	}
+	} 
 }
 
 void AMyPlayerController::Input_StopAim()
@@ -173,5 +181,5 @@ void AMyPlayerController::Input_StopAim()
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
 		ControlledChar->SetAiming(false);
-	}
+	} 
 }

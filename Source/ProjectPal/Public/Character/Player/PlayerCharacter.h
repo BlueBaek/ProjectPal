@@ -92,13 +92,18 @@ private:
 	// 구르기 속도 함수 : Montage Play Rate값
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float RollSpeed = 1.0f;
+	// 마지막 이동 입력 : 줌모드 구르기 구현용
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Input", meta=(AllowPrivateAccess="true"))
+	FVector2D CurrentMoveInput2D = FVector2D::ZeroVector;
 
 	// ActionState를 저장할 변수 : 초기값은 Idle
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
 	EMyActionState ActionState = EMyActionState::Idle;
 	
-	// Roll montage end callback
+	// 구르기 몽타주의 끝날 때 호출할 함수
 	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+	// 조준 모드에서 몽타주 선택 함수
+	UAnimMontage* SelectRollMontage_Aiming() const;
 
 public:
 	// 바인딩할 함수

@@ -28,6 +28,9 @@ public:
 	float Speed;	// 속도
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	float Direction;	// 방향
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	FVector Acceleration;	// 가속
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
@@ -40,8 +43,26 @@ public:
 	bool IsRising;	// 올라가는 중인지 검사
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	float Direction;	// 방향
+	bool IsAiming;	// 조준중인지 확인
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
-	bool IsAiming;	// 조준중인지 확인
+	bool IsAttacking;	// 조준중인지 확인
+	
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
+	bool IsReloading;	// 조준중인지 확인
+	
+	// --- 추가: 조준 상체 대기 몽타주 ---
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Aim|Montage")
+	TObjectPtr<UAnimMontage> AimUpperIdleMontage = nullptr;
+
+	// 조준 해제 시 몽타주 블렌드 아웃 시간
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Aim|Montage")
+	float AimUpperIdleStopBlendOutTime = 0.15f;
+	
+private:
+	// 이전 프레임 조준값(변화 감지용)
+	bool bPrevIsAiming = false;
+
+	// 조준 상태 변화에 따른 몽타주 처리
+	void HandleAimUpperMontage();
 };
