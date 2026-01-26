@@ -54,19 +54,19 @@ APlayerCharacter::APlayerCharacter()
 	// 구르기 몽타주 에셋 로드
 	// 앞
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollMontageAsset(
-		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_Anim_RollFwd.AM_Pal_Player_Anim_RollFwd"));
+		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollFwd.AM_Pal_Player_RollFwd"));
 	if (RollMontageAsset.Succeeded()) { RollMontage = RollMontageAsset.Object; }
 	// 뒤
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollBwdMontageAsset(
-		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_FlipBwd.AM_Pal_Player_FlipBwd"));
+		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_FlipBwd.AM_Pal_Player_FlipBwd"));
 	if (RollBwdMontageAsset.Succeeded()) { RollBwdMontage = RollBwdMontageAsset.Object; }
 	// 왼쪽
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollLeftMontageAsset(
-		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_RollLeft.AM_Pal_Player_RollLeft"));
+		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollLeft.AM_Pal_Player_RollLeft"));
 	if (RollLeftMontageAsset.Succeeded()) { RollLeftMontage = RollLeftMontageAsset.Object; }
 	// 오른쪽
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollRightMontageAsset(
-		TEXT("/Game/_Pal/BluePrint/Character/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
+		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
 	if (RollRightMontageAsset.Succeeded()) { RollRightMontage = RollRightMontageAsset.Object; }
 }
 
@@ -175,14 +175,14 @@ void APlayerCharacter::Roll()
 	// 이미 구르는 중이면 무시
 	if (ActionState == EMyActionState::Rolling) return;
 	// 몽타주를 실행시킬 Anim인스턴스
-	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
+	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
 	if (!AnimInstance) return;
 	
 	// 구르기 시작 순간 조준 여부를 저장
 	const bool bWasAiming = bIsAiming;
 
 	// --- 조준 여부에 따라 사용할 몽타주 결정 ---
-	UAnimMontage* MontageToPlay = RollMontage;	// 실행할 몽타주 선택, 기본값 앞구르기
+	TObjectPtr<UAnimMontage> MontageToPlay = RollMontage;	// 실행할 몽타주 선택, 기본값 앞구르기
 	if (bWasAiming)	// 조준 중이면 몽타주 선택
 	{
 		MontageToPlay = SelectRollMontage_Aiming();
@@ -247,7 +247,7 @@ void APlayerCharacter::OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupt
 }
 
 // 조준 모드에서 몽타주 선택 함수
-UAnimMontage* APlayerCharacter::SelectRollMontage_Aiming() const
+TObjectPtr<UAnimMontage> APlayerCharacter::SelectRollMontage_Aiming() const
 {
 	// 방향키 입력 갱신용
 	const FVector2D Input = CurrentMoveInput2D;

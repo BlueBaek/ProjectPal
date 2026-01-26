@@ -86,7 +86,7 @@ void AMyPlayerController::SetupInputComponent()
 		EnhancedInputComponent->BindAction(MoveAction, ETriggerEvent::Canceled, this,
 		                                   &AMyPlayerController::Input_Move);
 
-		//Look
+		// Look
 		EnhancedInputComponent->BindAction(LookAction, ETriggerEvent::Triggered, this,
 		                                   &AMyPlayerController::Input_Look);
 

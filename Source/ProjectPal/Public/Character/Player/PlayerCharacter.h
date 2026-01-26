@@ -68,16 +68,18 @@ private:
 
 	// 구르기 몽타주 변수
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation", meta=(AllowPrivateAccess="true"))
-	UAnimMontage* RollMontage;
+	// UAnimMontage* RollMontage;
+	TObjectPtr<UAnimMontage> RollMontage;
+	
 	// 구르기(뒤) 몽타주 변수
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation", meta=(AllowPrivateAccess="true"))
-	UAnimMontage* RollBwdMontage;
+	TObjectPtr<UAnimMontage> RollBwdMontage;
 	// 구르기(왼쪽) 몽타주 변수
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation", meta=(AllowPrivateAccess="true"))
-	UAnimMontage* RollLeftMontage;
+	TObjectPtr<UAnimMontage> RollLeftMontage;
 	// 구르기(오른쪽) 몽타주 변수
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Animation", meta=(AllowPrivateAccess="true"))
-	UAnimMontage* RollRightMontage;
+	TObjectPtr<UAnimMontage> RollRightMontage;
 
 	// 속도 변화를 위한 변수
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
@@ -89,7 +91,7 @@ private:
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float SprintSpeed = 600.0f;
 
-	// 구르기 속도 함수 : Montage Play Rate값
+	// 구르기 속도 변수 : Montage Play Rate값
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float RollSpeed = 1.0f;
 	// 마지막 이동 입력 : 줌모드 구르기 구현용
@@ -100,10 +102,10 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
 	EMyActionState ActionState = EMyActionState::Idle;
 	
-	// 구르기 몽타주의 끝날 때 호출할 함수
+	// 구르기 몽타주가 끝날 때 호출할 함수
 	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
-	// 조준 모드에서 몽타주 선택 함수
-	UAnimMontage* SelectRollMontage_Aiming() const;
+	// 조준 모드에서 구르기 몽타주 선택 함수
+	TObjectPtr<UAnimMontage> SelectRollMontage_Aiming() const;
 
 public:
 	// 바인딩할 함수
