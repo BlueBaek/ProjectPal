@@ -45,11 +45,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool IsAiming;	// 조준중인지 확인
 	
+	/*
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool IsAttacking;	// 조준중인지 확인
 	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool IsReloading;	// 조준중인지 확인
+	*/
 	
 	// --- 추가: 조준 상체 대기 몽타주 ---
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Aim|Montage")

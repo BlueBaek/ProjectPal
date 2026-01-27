@@ -9,7 +9,6 @@
 
 AMyPlayerController::AMyPlayerController()
 {
-	
 }
 
 void AMyPlayerController::UpdateInputContext()
@@ -53,7 +52,6 @@ void AMyPlayerController::UpdateInputContext()
 		Subsystem->AddMappingContext(DesiredStateIMC, StateIMCPriority);
 		CurrentStateIMC = DesiredStateIMC;
 	}
-	
 }
 
 void AMyPlayerController::BeginPlay()
@@ -106,9 +104,15 @@ void AMyPlayerController::SetupInputComponent()
 
 		// Zoom
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this,
-		                                   &AMyPlayerController::Input_StartAim);
+        		                                   &AMyPlayerController::Input_StartAim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
-		                                   &AMyPlayerController::Input_StopAim);
+										   &AMyPlayerController::Input_StopAim);
+
+		// Attack
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this,
+		                                   &AMyPlayerController::Input_StartAttack);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this,
+										   &AMyPlayerController::Input_StopAttack);
 	}
 }
 
@@ -173,7 +177,8 @@ void AMyPlayerController::Input_StartAim()
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
 		ControlledChar->SetAiming(true);
-	} 
+	}
+	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, TEXT("StartAim"));
 }
 
 void AMyPlayerController::Input_StopAim()
@@ -181,5 +186,22 @@ void AMyPlayerController::Input_StopAim()
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
 		ControlledChar->SetAiming(false);
-	} 
+		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("StopAim"));
+	}
+}
+
+void AMyPlayerController::Input_StartAttack()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->Attack(true);
+	}
+}
+
+void AMyPlayerController::Input_StopAttack()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->Attack(false);
+	}
 }

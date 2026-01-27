@@ -16,16 +16,6 @@ APlayerCharacter::APlayerCharacter()
 	PrimaryActorTick.bCanEverTick = true;
 	PrimaryActorTick.bStartWithTickEnabled = false;
 
-	// 스켈레탈메시 로드
-	static ConstructorHelpers::FObjectFinder<USkeletalMesh> MeshAsset(
-		TEXT("/Game/_Pal/Import/Player/Pal_Player.Pal_Player"));
-	if (MeshAsset.Succeeded())
-	{
-		GetMesh()->SetSkeletalMesh(MeshAsset.Object);
-	}
-	// Mesh의 Location, Rotation 설정
-	GetMesh()->SetRelativeLocationAndRotation(FVector(0.f, 0.f, -85.0f), FRotator(0.0f, -90.0f, 0.f));
-
 	//캡슐 콜리전 크기 조절
 	GetCapsuleComponent()->InitCapsuleSize(34.0f, 85.0f);
 
@@ -282,6 +272,9 @@ TObjectPtr<UAnimMontage> APlayerCharacter::SelectRollMontage_Aiming() const
 
 void APlayerCharacter::SetAiming(bool isAiming)
 {
+	// Idle이 아니라면 활성되지 않음
+	if (!(ActionState == EMyActionState::Idle)) return;
+	
 	bIsAiming = isAiming;
 
 	// 조준 상태가 바뀌면 보간(Interpolation)을 위해 Tick 활성화
@@ -311,4 +304,18 @@ void APlayerCharacter::SetAiming(bool isAiming)
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
 	                                 FString::Printf(TEXT("Aiming : %s"), bIsAiming ? TEXT("True") : TEXT("False")));
 	                                 */
+}
+
+void APlayerCharacter::Attack(bool isAttacking)
+{
+	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
+	if (isAttacking) // 공격 중
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AttackWalkSpeed;
+	}
+	else // 공격 끝
+	{
+		// 이동 속도 복구
+		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
+	}
 }

@@ -10,6 +10,7 @@ struct FInputActionValue;
 class UCameraComponent;
 class USpringArmComponent;
 class UAnimMontage;
+class UCombatComponent;
 
 // Action 상태를 확인할 Enum class
 UENUM(BlueprintType)
@@ -87,6 +88,8 @@ private:
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float AimWalkSpeed = 200.0f; // 조준 시 걷는 속도
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
+	float AttackWalkSpeed = 200.0f; // 공격 시 걷는 속도
+	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float JogSpeed = 400.0f;
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float SprintSpeed = 600.0f;
@@ -106,7 +109,10 @@ private:
 	void OnRollMontageEnded(UAnimMontage* Montage, bool bInterrupted);
 	// 조준 모드에서 구르기 몽타주 선택 함수
 	TObjectPtr<UAnimMontage> SelectRollMontage_Aiming() const;
-
+	
+	
+	
+	
 public:
 	// 바인딩할 함수
 	void Move(const FInputActionValue& Value); // 기본 움직임(Jogging)
@@ -115,7 +121,8 @@ public:
 	void StopSprint(const FInputActionValue& Value); // 달리기 끝
 	void Roll();
 	void SetAiming(bool isAiming);
-
+	void Attack(bool isAttacking);
+	
 	// Getter
 	FORCEINLINE bool GetIsAiming() { return bIsAiming; }
 };

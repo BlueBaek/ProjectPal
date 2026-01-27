@@ -61,6 +61,9 @@ protected:
 	// 상태 IMC 우선순위 (필요하면 조절)
 	UPROPERTY(EditDefaultsOnly, Category="Input")
 	int32 StateIMCPriority = 0;
+	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* AttackAction;
 
 	// --- 입력 처리 함수들 ---
 	void Input_Move(const FInputActionValue& Value);
@@ -72,4 +75,6 @@ protected:
 	void Input_Roll();
 	void Input_StartAim();
 	void Input_StopAim();
+	void Input_StartAttack();
+	void Input_StopAttack();
 };
