@@ -45,6 +45,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool IsAiming;	// 조준중인지 확인
 	
+	// 플레이어의 상체가 시점에 따라 꺾이는 기능 추가를 위함
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Aim")
+	float AimPitch = 0.f;
+	
 	/*
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	bool IsAttacking;	// 조준중인지 확인

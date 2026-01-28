@@ -35,6 +35,7 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaTime)
 	{
 		MovementComponent = Player->GetCharacterMovement();
 	}
+	
 
 	// 구현
 	if (MovementComponent && Player)
@@ -50,6 +51,14 @@ void UPlayerAnimInstance::NativeUpdateAnimation(float DeltaTime)
 		                                                        Player->GetActorRotation());
 		if (APlayerCharacter* PlayerChar = Cast<APlayerCharacter>(Player))
 		{
+			FRotator ControlRot = PlayerChar->GetControlRotation();
+			FRotator ActorRot = PlayerChar->GetActorRotation();
+			
+			FRotator Delta = ControlRot - ActorRot;
+			Delta.Normalize();
+			
+			AimPitch = Delta.Pitch;
+			
 			// PlayerCharacter에서 bIsAiming 값을 가져옴
 			IsAiming = PlayerChar->GetIsAiming(); //bIsAiming의 getter
 		}

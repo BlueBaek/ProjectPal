@@ -6,6 +6,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/SpringArmComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Character/Player/CombatComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/MyPlayerController.h"
 
@@ -58,6 +59,9 @@ APlayerCharacter::APlayerCharacter()
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollRightMontageAsset(
 		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
 	if (RollRightMontageAsset.Succeeded()) { RollRightMontage = RollRightMontageAsset.Object; }
+	
+	// CombatComponent 생성 + 부착
+	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -311,10 +315,18 @@ void APlayerCharacter::Attack(bool isAttacking)
 	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
 	if (isAttacking) // 공격 중
 	{
+		// 이동 방향으로 자동회전 false
+		GetCharacterMovement()->bOrientRotationToMovement = false;
+		// 컨트롤러의 회전값(Yaw)을 사용
+		bUseControllerRotationYaw = true;
 		GetCharacterMovement()->MaxWalkSpeed = AttackWalkSpeed;
 	}
 	else // 공격 끝
 	{
+		// 이동 방향으로 자동회전 true
+		GetCharacterMovement()->bOrientRotationToMovement = true;
+		// 이동 방향으로 캐릭터가 회전하도록 복구
+		bUseControllerRotationYaw = false;
 		// 이동 속도 복구
 		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
 	}

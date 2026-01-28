@@ -110,8 +110,9 @@ private:
 	// 조준 모드에서 구르기 몽타주 선택 함수
 	TObjectPtr<UAnimMontage> SelectRollMontage_Aiming() const;
 	
-	
-	
+	// CombatComponent 붙이기
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UCombatComponent> CombatComponent;
 	
 public:
 	// 바인딩할 함수
@@ -124,5 +125,6 @@ public:
 	void Attack(bool isAttacking);
 	
 	// Getter
-	FORCEINLINE bool GetIsAiming() { return bIsAiming; }
+	FORCEINLINE bool GetIsAiming() { return bIsAiming; }	// 조준 상태인지 확인
+	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }	// CombatComponent
 };

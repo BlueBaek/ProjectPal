@@ -5,6 +5,7 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Character/Player/CombatComponent.h"
 #include "Character/Player/PlayerCharacter.h"
 
 AMyPlayerController::AMyPlayerController()
@@ -58,6 +59,12 @@ void AMyPlayerController::BeginPlay()
 {
 	Super::BeginPlay();
 
+	if (PlayerCameraManager)
+	{
+		PlayerCameraManager->ViewPitchMin = ViewPitchMin;
+		PlayerCameraManager->ViewPitchMax = ViewPitchMax;
+	}
+
 	// 현재 PlayerController에 연결된 Local Player 객체를 가져옴
 	ULocalPlayer* player = GetLocalPlayer();
 	if (!player) return;
@@ -104,15 +111,15 @@ void AMyPlayerController::SetupInputComponent()
 
 		// Zoom
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Started, this,
-        		                                   &AMyPlayerController::Input_StartAim);
+		                                   &AMyPlayerController::Input_StartAim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
-										   &AMyPlayerController::Input_StopAim);
+		                                   &AMyPlayerController::Input_StopAim);
 
 		// Attack
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this,
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this,
 		                                   &AMyPlayerController::Input_StartAttack);
-		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Triggered, this,
-										   &AMyPlayerController::Input_StopAttack);
+		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_StopAttack);
 	}
 }
 
@@ -194,7 +201,10 @@ void AMyPlayerController::Input_StartAttack()
 {
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
-		ControlledChar->Attack(true);
+		if (UCombatComponent* Combat = ControlledChar->GetCombatComponent())
+		{
+			Combat->ProcessAttack(true);
+		}
 	}
 }
 
@@ -202,6 +212,9 @@ void AMyPlayerController::Input_StopAttack()
 {
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
-		ControlledChar->Attack(false);
+		if (UCombatComponent* Combat = ControlledChar->GetCombatComponent())
+		{
+			Combat->ProcessAttack(false);
+		}
 	}
 }
