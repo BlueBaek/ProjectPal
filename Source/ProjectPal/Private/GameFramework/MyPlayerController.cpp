@@ -29,7 +29,7 @@ void AMyPlayerController::UpdateInputContext()
 	// 현재 상태에 따라 적절한 IMC 할당
 	if (PlayerCharacter->GetActionState() == EMyActionState::Rolling)
 	{
-		if (RollingIMC) { DesiredStateIMC = RollingIMC; }
+		if (IdleIMC) { DesiredStateIMC = RollingIMC; }
 	}
 	/*else if (Player->GetActionState() == EMyActionState::...)*/
 	else

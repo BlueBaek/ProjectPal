@@ -4,7 +4,6 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
-#include "Data/WeaponType.h"
 #include "CombatComponent.generated.h"
 
 class APlayerCharacter;
@@ -33,11 +32,19 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Combat|Data")
 	TObjectPtr<UWeaponDataAsset> UnarmedData;
 
+	// 지금 재생 중인 공격 몽타주 추적
+	UPROPERTY()
+	TObjectPtr<UAnimMontage> CurrentAttackMontage;
+	
 	// 간단한 연타/중복 재생 방지용
 	bool bAttackPressed = false;
 
 	void StartAttack();
-	void StopAttack();
+	// void StopAttack();
 
 	UAnimMontage* GetCurrentAttackMontage() const;
+	
+	// 몽타주 종료 타이밍 콜백
+	UFUNCTION()
+	void OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted);
 };

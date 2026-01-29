@@ -8,7 +8,10 @@
 #include "EnhancedInputSubsystems.h"
 #include "Character/Player/CombatComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "DataAsset/WeaponDataAsset.h"
 #include "GameFramework/MyPlayerController.h"
+#include "Components/SkeletalMeshComponent.h"
+#include "Animation/AnimInstance.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -68,6 +71,9 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+	
+	// 맨손 AnimLayer가 적용되는지 확인
+	ApplyUnarmedAnimLayer();
 }
 
 // Called every frame
@@ -104,7 +110,6 @@ void APlayerCharacter::SetActionState(EMyActionState NewState)
 
 	// 필요에 따라 이곳에서 OnStateChanged 델리게이트 브로드캐스트 가능
 }
-
 
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
@@ -148,18 +153,19 @@ void APlayerCharacter::Look(const FInputActionValue& Value)
 
 void APlayerCharacter::StartSprint(const FInputActionValue& Value)
 {
-	if (!bIsAiming)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed; // 최대 이동속도 변경
-	}
+	bSprintHeld = true;
+
+	// 공격 중/조준 중에는 달리기 적용 금지
+	if (bIsAttacking || bIsAiming) return;
+
+	UpdateMoveSpeed();
 }
 
 void APlayerCharacter::StopSprint(const FInputActionValue& Value)
 {
-	if (!bIsAiming)
-	{
-		GetCharacterMovement()->MaxWalkSpeed = JogSpeed; // 최대 이동속도 변경
-	}
+	bSprintHeld = false;
+
+	UpdateMoveSpeed();
 }
 
 void APlayerCharacter::Roll()
@@ -285,24 +291,26 @@ void APlayerCharacter::SetAiming(bool isAiming)
 	SetActorTickEnabled(true);
 
 	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
-	if (bIsAiming) // 조준 중
-	{
-		// 이동 방향으로 자동회전 false
-		GetCharacterMovement()->bOrientRotationToMovement = false;
-		// 컨트롤러의 회전값(Yaw)을 사용
-		bUseControllerRotationYaw = true;
-		// 이동 속도 감소
-		GetCharacterMovement()->MaxWalkSpeed = AimWalkSpeed;
-	}
-	else // 조준 해제
-	{
-		// 이동 방향으로 자동회전 true
-		GetCharacterMovement()->bOrientRotationToMovement = true;
-		// 이동 방향으로 캐릭터가 회전하도록 복구
-		bUseControllerRotationYaw = false;
-		// 이동 속도 복구
-		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
-	}
+	// if (bIsAiming) // 조준 중
+	// {
+	// 	// 이동 방향으로 자동회전 false
+	// 	GetCharacterMovement()->bOrientRotationToMovement = false;
+	// 	// 컨트롤러의 회전값(Yaw)을 사용
+	// 	bUseControllerRotationYaw = true;
+	// 	// 이동 속도 감소
+	// 	GetCharacterMovement()->MaxWalkSpeed = AimWalkSpeed;
+	// }
+	// else // 조준 해제
+	// {
+	// 	// 이동 방향으로 자동회전 true
+	// 	GetCharacterMovement()->bOrientRotationToMovement = true;
+	// 	// 이동 방향으로 캐릭터가 회전하도록 복구
+	// 	bUseControllerRotationYaw = false;
+	// 	// 이동 속도 복구
+	// 	GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
+	// }
+	UpdateRotationControl();	// 시점 고정 함수
+	UpdateMoveSpeed();	// 속도 변화용 함수
 
 	/* 디버깅용 출력 메세지
 	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
@@ -312,22 +320,80 @@ void APlayerCharacter::SetAiming(bool isAiming)
 
 void APlayerCharacter::Attack(bool isAttacking)
 {
-	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
-	if (isAttacking) // 공격 중
+	bIsAttacking = isAttacking;
+	// 공격 중엔 시점 고정
+	
+	// bUseControllerRotationYaw = isAttacking;
+	// GetCharacterMovement()->bOrientRotationToMovement = !isAttacking;
+	UpdateRotationControl();	// 시점 고정 함수로 교체
+	
+	UpdateMoveSpeed();
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, "Attacking: " + bIsAttacking ? "true" : "false");
+}
+
+// State별 MovementSpeed 제어
+void APlayerCharacter::UpdateMoveSpeed()
+{
+	if (!GetCharacterMovement()) return;
+
+	// 우선순위: 조준 > 공격 > 스프린트 > 기본
+	if (bIsAiming)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AimWalkSpeed;
+	}
+	else if (bIsAttacking)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = AttackWalkSpeed;
+	}
+	else if (bSprintHeld)
+	{
+		GetCharacterMovement()->MaxWalkSpeed = SprintSpeed;
+	}
+	else
+	{
+		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
+	}
+}
+
+void APlayerCharacter::UpdateRotationControl()
+{
+	if (!GetCharacterMovement()) return;
+	
+	if (bIsAiming || bIsAttacking)
 	{
 		// 이동 방향으로 자동회전 false
 		GetCharacterMovement()->bOrientRotationToMovement = false;
 		// 컨트롤러의 회전값(Yaw)을 사용
 		bUseControllerRotationYaw = true;
-		GetCharacterMovement()->MaxWalkSpeed = AttackWalkSpeed;
 	}
-	else // 공격 끝
+	else
 	{
 		// 이동 방향으로 자동회전 true
 		GetCharacterMovement()->bOrientRotationToMovement = true;
 		// 이동 방향으로 캐릭터가 회전하도록 복구
 		bUseControllerRotationYaw = false;
-		// 이동 속도 복구
-		GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
+	}
+	
+}
+
+void APlayerCharacter::ApplyUnarmedAnimLayer()
+{
+	USkeletalMeshComponent* MeshComp = GetMesh();
+	if (!MeshComp) return;
+
+	TSubclassOf<UAnimInstance> Desired = UnarmedData ? UnarmedData->AnimLayerClass : nullptr;
+
+	if (CurrentLinkedLayerClass && CurrentLinkedLayerClass != Desired)
+	{
+		MeshComp->UnlinkAnimClassLayers(CurrentLinkedLayerClass);
+		CurrentLinkedLayerClass = nullptr;
+	}
+
+	if (Desired && CurrentLinkedLayerClass != Desired)
+	{
+		MeshComp->LinkAnimClassLayers(Desired);
+		CurrentLinkedLayerClass = Desired;
+
+		UE_LOG(LogTemp, Warning, TEXT("[AnimLayer] Linked: %s"), *GetNameSafe(Desired));
 	}
 }

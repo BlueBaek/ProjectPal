@@ -11,17 +11,19 @@ class UCameraComponent;
 class USpringArmComponent;
 class UAnimMontage;
 class UCombatComponent;
+class UWeaponDataAsset;
+class UAnimInstance;
 
 // Action 상태를 확인할 Enum class
 UENUM(BlueprintType)
 enum class EMyActionState : uint8
 {
-	Idle = 0 UMETA(DisplayName="Idle"),
-	Rolling UMETA(DisplayName="Rolling"),
-	SpawningPal UMETA(DisplayName="SpawningPal"),
-	DespawningPal UMETA(DisplayName="DespawningPal"),
-	Exhaust UMETA(DisplayName="Exhaust"),
-	Dead UMETA(DisplayName="Dead"),
+	Idle = 0		UMETA(DisplayName="Idle"),
+	Rolling			UMETA(DisplayName="Rolling"),
+	SpawningPal		UMETA(DisplayName="SpawningPal"),
+	DespawningPal	UMETA(DisplayName="DespawningPal"),
+	Exhaust			UMETA(DisplayName="Exhaust"),
+	Dead			UMETA(DisplayName="Dead"),
 };
 
 UCLASS()
@@ -88,7 +90,7 @@ private:
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float AimWalkSpeed = 200.0f; // 조준 시 걷는 속도
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
-	float AttackWalkSpeed = 200.0f; // 공격 시 걷는 속도
+	float AttackWalkSpeed = 300.0f; // 공격 시 걷는 속도
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
 	float JogSpeed = 400.0f;
 	UPROPERTY(EditAnywhere, Category="Movement", meta=(AllowPrivateAccess="true"))
@@ -114,6 +116,21 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCombatComponent> CombatComponent;
 	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
+	bool bIsAttacking = false;
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
+	bool bSprintHeld = false;
+	
+	// 무기 교체 및 모션 변경을 위한 변수 함수.
+	UPROPERTY(EditDefaultsOnly, Category="Combat|Data")
+	TObjectPtr<UWeaponDataAsset> UnarmedData; // 맨손 기본 데이터(AnimLayer 포함)
+
+	UPROPERTY()
+	TSubclassOf<UAnimInstance> CurrentLinkedLayerClass;	// 현재 링크된 LayerClass
+	
+	// AnimLayer적용
+	void ApplyUnarmedAnimLayer();
+	
 public:
 	// 바인딩할 함수
 	void Move(const FInputActionValue& Value); // 기본 움직임(Jogging)
@@ -123,8 +140,11 @@ public:
 	void Roll();
 	void SetAiming(bool isAiming);
 	void Attack(bool isAttacking);
+	void UpdateMoveSpeed();		// 이동속도 변화를 부드럽게 하기 위한 함수
+	void UpdateRotationControl();		// 이동속도 변화를 부드럽게 하기 위한 함수
 	
 	// Getter
 	FORCEINLINE bool GetIsAiming() { return bIsAiming; }	// 조준 상태인지 확인
+	FORCEINLINE bool GetIsAttacking() { return bIsAttacking; }	// 조준 상태인지 확인
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }	// CombatComponent
 };
