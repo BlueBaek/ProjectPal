@@ -13,6 +13,7 @@ class UAnimMontage;
 class UCombatComponent;
 class UWeaponDataAsset;
 class UAnimInstance;
+class UPlayerStatComponent;
 
 // Action 상태를 확인할 Enum class
 UENUM(BlueprintType)
@@ -23,7 +24,7 @@ enum class EMyActionState : uint8
 	SpawningPal		UMETA(DisplayName="SpawningPal"),
 	DespawningPal	UMETA(DisplayName="DespawningPal"),
 	Exhaust			UMETA(DisplayName="Exhaust"),
-	Dead			UMETA(DisplayName="Dead"),
+	// Dead			UMETA(DisplayName="Dead"),
 };
 
 UCLASS()
@@ -51,6 +52,7 @@ public:
 	void SetActionState(EMyActionState NewState);
 
 private:
+	
 	// 카메라 붐 스틱
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera", meta=(AllowPrivateAccess="true"))
 	USpringArmComponent* CCameraArm;
@@ -112,10 +114,15 @@ private:
 	// 조준 모드에서 구르기 몽타주 선택 함수
 	TObjectPtr<UAnimMontage> SelectRollMontage_Aiming() const;
 	
-	// CombatComponent 붙이기
+	// ---- Components ----
+	// StatComponent
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Stat", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UPlayerStatComponent> StatComponent;
+	
+	// CombatComponent
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCombatComponent> CombatComponent;
-	
+	// ---- ----
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
 	bool bIsAttacking = false;
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
@@ -146,5 +153,7 @@ public:
 	// Getter
 	FORCEINLINE bool GetIsAiming() { return bIsAiming; }	// 조준 상태인지 확인
 	FORCEINLINE bool GetIsAttacking() { return bIsAttacking; }	// 조준 상태인지 확인
+	FORCEINLINE UPlayerStatComponent* GetStatComponent() const { return StatComponent; }	// StatComponent
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }	// CombatComponent
+	
 };

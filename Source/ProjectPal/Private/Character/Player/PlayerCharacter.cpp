@@ -12,6 +12,7 @@
 #include "GameFramework/MyPlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Component/PlayerStatComponent.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -63,8 +64,9 @@ APlayerCharacter::APlayerCharacter()
 		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
 	if (RollRightMontageAsset.Succeeded()) { RollRightMontage = RollRightMontageAsset.Object; }
 	
-	// CombatComponent 생성 + 부착
+	// Component 부착
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
+	StatComponent = CreateDefaultSubobject<UPlayerStatComponent>(TEXT("StatComponent"));
 }
 
 // Called when the game starts or when spawned
@@ -72,6 +74,8 @@ void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// 최초 스탯 적용 (레벨, HP, Stamina, Attack, Defense, true : 최대 최력, 최대 스테미나로 적용)
+	StatComponent->InitializeStats(1, 500.f, 100.f, 100.f, 100.f, true);
 	// 맨손 AnimLayer가 적용되는지 확인
 	ApplyUnarmedAnimLayer();
 }
@@ -100,6 +104,12 @@ void APlayerCharacter::Tick(float DeltaTime)
 		CCameraArm->TargetArmLength = TargetArmLength;
 
 		SetActorTickEnabled(false);
+	}
+	
+	// ===== 스탯 컴포넌트 디버그용 =====
+	if (StatComponent)
+	{
+		StatComponent->DrawDebugStat();
 	}
 }
 
