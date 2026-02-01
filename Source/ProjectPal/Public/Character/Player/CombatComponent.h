@@ -36,9 +36,26 @@ private:
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> CurrentAttackMontage;
 	
-	// 간단한 연타/중복 재생 방지용
+	// ===== 콤보 어택 구현용 =====
+	// 입력 홀드 상태
 	bool bAttackPressed = false;
+	
+	// 콤보 상태
+	int32 ComboIndex = 0;
 
+	// 마지막 공격 시간(콤보 리셋 판단)
+	float LastAttackTime = -1000.f;
+	
+	// 콤보 리셋 딜레이(이 시간 넘으면 다시 1타부터)
+	UPROPERTY(EditDefaultsOnly, Category="Combat|Combo")
+	float ComboResetDelay = 0.9f;
+	
+	// 몽타주 섹션 이름들
+	UPROPERTY(EditDefaultsOnly, Category="Combat|Combo")
+	TArray<FName> ComboSections = { TEXT("Combo1"), TEXT("Combo2"), TEXT("Combo3") };
+	
+	// ===== 콤보 어택 구현용 =====
+	
 	void StartAttack();
 	// void StopAttack();
 
@@ -47,4 +64,8 @@ private:
 	// 몽타주 종료 타이밍 콜백
 	UFUNCTION()
 	void OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted);
+	
+private:
+	// 섹션 유효성 체크
+	bool IsComboSectionValid(UAnimMontage* Montage, const FName& SectionName) const;
 };

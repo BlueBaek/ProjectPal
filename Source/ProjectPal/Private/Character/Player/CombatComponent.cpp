@@ -22,23 +22,45 @@ void UCombatComponent::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("OwnerCharacter: %s"), *GetNameSafe(OwnerCharacter));
 }
 
+/*
 void UCombatComponent::ProcessAttack(bool bPressed)
 {
-	// bAttackPressed = bPressed;
-	//
-	// if (bPressed)	StartAttack();
-	// else			StopAttack();
+	bAttackPressed = bPressed;
 	
 	if (!bPressed)
 	{
-		// 버튼 뗐을 때는 상태를 풀지 않음.
-		// 상태 해제는 몽타주 끝 타이밍에서만 처리.
+		StartAttack();
+	}
+}
+*/
+
+// 콤보어택 기반으로 수정
+void UCombatComponent::ProcessAttack(bool bPressed)
+{
+	bAttackPressed = bPressed;
+	UE_LOG(LogTemp, Warning, TEXT("bAttackPressed = %s"),bAttackPressed ? TEXT("True") : TEXT("False"));
+	// 버튼을 뗐을 때: 현재 재생 중인 몽타주는 끝까지 가게 두고,
+	// 다음 콤보가 자동으로 이어지지 않도록만 한다.
+	if (!bPressed)
+	{
 		return;
 	}
 
+	// 눌렀을 때: 콤보 리셋 시간 넘었으면 1타부터
+	if (GetWorld())
+	{
+		const float Now = GetWorld()->GetTimeSeconds();
+		if ((Now - LastAttackTime) > ComboResetDelay)
+		{
+			ComboIndex = 0;
+		}
+	}
+	UE_LOG(LogTemp, Warning, TEXT("StartAttack"));
 	StartAttack();
 }
 
+
+/*
 void UCombatComponent::StartAttack()
 {
 	if (!OwnerCharacter) return;
@@ -74,6 +96,74 @@ void UCombatComponent::StartAttack()
 	// ✅ 3) 상태 ON (재생이 확정된 뒤에만)
 	OwnerCharacter->Attack(true);
 }
+*/
+
+void UCombatComponent::StartAttack()
+{
+	if (!OwnerCharacter) return;
+	UE_LOG(LogTemp, Warning, TEXT("OwnCharacter: %s"), *OwnerCharacter->GetName());
+	
+	UAnimMontage* Montage = GetCurrentAttackMontage();
+	UE_LOG(LogTemp, Warning, TEXT("Montage=%s"), *GetNameSafe(Montage));
+	
+	if (!Montage) return;
+
+	UAnimInstance* AnimInst = OwnerCharacter->GetMesh() ? OwnerCharacter->GetMesh()->GetAnimInstance() : nullptr;
+	if (!AnimInst) return;
+
+	// 이미 재생 중이면(아직 1타/2타가 끝나기 전이면) 새로 시작하지 않음
+	if (AnimInst->Montage_IsPlaying(Montage)) return;
+
+	
+	// 추가 : 콤보 섹션 안전 처리
+	if (ComboSections.Num() <= 0)
+	{
+		ComboIndex = 0;
+	}
+	else
+	{
+		ComboIndex = FMath::Clamp(ComboIndex, 0, ComboSections.Num() - 1);
+	}
+	
+	CurrentAttackMontage = Montage;
+
+	// 1) 재생 시도
+	const float PlayResult = AnimInst->Montage_Play(Montage);
+	
+	// 디버그용
+	
+	
+	// PlayResult가 0이면 재생 실패
+	if (PlayResult <= 0.f)
+	{
+		CurrentAttackMontage = nullptr;
+		return;
+	}
+	
+	// 추가 : 해당 콤보 섹션으로 시작
+	if (ComboSections.IsValidIndex(ComboIndex))
+	{
+		const FName SectionName = ComboSections[ComboIndex];
+		if (IsComboSectionValid(Montage, SectionName))
+		{
+			AnimInst->Montage_JumpToSection(SectionName, Montage);
+		}
+	}
+	
+	// 2) 재생 성공 후 델리게이트 연결
+	FOnMontageBlendingOutStarted BlendOutDelegate;
+	BlendOutDelegate.BindUObject(this, &UCombatComponent::OnAttackMontageBlendingOut);
+	AnimInst->Montage_SetBlendingOutDelegate(BlendOutDelegate, Montage);
+
+	// 3) 상태 ON (재생이 확정된 뒤에만)
+	OwnerCharacter->Attack(true);
+	
+	// 추가 : 마지막 공격 시간 갱신
+	if (GetWorld())
+	{
+		LastAttackTime = GetWorld()->GetTimeSeconds();
+	}
+}
 
 // 몽타주 재생시간을 기준으로 Stop하는 방식으로 변경
 // void UCombatComponent::StopAttack()
@@ -99,8 +189,8 @@ void UCombatComponent::OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bI
 	// 디버그용
 	// UE_LOG(LogTemp, Warning, TEXT("Attack BlendOut: %s Interrupted=%d"),
 	// *GetNameSafe(Montage), bInterrupted ? 1 : 0);
-	//
-	// 내가 관리하는 공격 몽타주가 아닐 수도 있으니 가드
+	
+	// 내가 관리하는 공격 몽타주가 아닐 수도 있으니 조건 추가
 	if (!OwnerCharacter) return;
 	if (!CurrentAttackMontage) return;
 	if (Montage != CurrentAttackMontage) return;
@@ -109,6 +199,46 @@ void UCombatComponent::OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bI
 	OwnerCharacter->Attack(false);
 	
 	CurrentAttackMontage = nullptr;
+	
+	/*	콤보 어택으로 교체
+	// 마우스가 아직 눌려있다면 다음 공격 이어서 실행
+	if (bAttackPressed && !bInterrupted)
+	{
+		StartAttack();
+	}
+	*/
+	
+	// 추가 : 홀드 중이면 다음 콤보로 진행
+	if (bAttackPressed)
+	{
+		// 다음 타로 증가 (1->2->3)
+		if (ComboSections.Num() > 0)
+		{
+			ComboIndex = (ComboIndex + 1) % ComboSections.Num();
+		}
+		else
+		{
+			ComboIndex = 0;
+		}
+
+		StartAttack();
+	}
+	else
+	{
+		// 버튼 뗐으면 콤보 리셋(다음 공격은 1타부터)
+		ComboIndex = 0;
+	}
+}
+
+
+bool UCombatComponent::IsComboSectionValid(UAnimMontage* Montage, const FName& SectionName) const
+{
+	if (!Montage) return false;
+	if (SectionName.IsNone()) return false;
+
+	// 섹션이 없으면 INDEX_NONE
+	const int32 SectionIndex = Montage->GetSectionIndex(SectionName);
+	return SectionIndex != INDEX_NONE;
 }
 
 
