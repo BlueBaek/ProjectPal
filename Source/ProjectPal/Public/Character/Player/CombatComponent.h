@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
+#include "Data/WeaponType.h"
 #include "CombatComponent.generated.h"
 
 class APlayerCharacter;
@@ -27,11 +28,18 @@ protected:
 private:
 	UPROPERTY()
 	TObjectPtr<APlayerCharacter> OwnerCharacter;
-
+	
 	// 무기 없을 때 사용할 데이터(WeaponMesh는 NULL이어도 OK)
 	UPROPERTY(EditDefaultsOnly, Category="Combat|Data")
 	TObjectPtr<UWeaponDataAsset> UnarmedData;
+	
+	// 사용할 무기의 데이터
+	UPROPERTY(EditDefaultsOnly, Category="Combat|Data")
+	TObjectPtr<UWeaponDataAsset> CurrentWeaponData;
 
+	// 현재 무기의 입력 타입 반환
+	EWeaponType GetCurrentWeaponType() const;
+	
 	// 지금 재생 중인 공격 몽타주 추적
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> CurrentAttackMontage;
@@ -54,9 +62,33 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Combat|Combo")
 	TArray<FName> ComboSections = { TEXT("Combo1"), TEXT("Combo2"), TEXT("Combo3") };
 	
-	// ===== 콤보 어택 구현용 =====
+	// =====
 	
+	// ===== Sword 어택구현용 =====
+	
+	// 타이밍 클릭 콤보용
+	bool bComboWindowOpen = false;     // 지금 입력 받아도 되는 구간인지
+	bool bBufferedNextAttack = false;  // 플레이어가 클릭을 미리 눌렀는지
+	
+	bool IsAttackMontagePlaying() const;
+	
+public:
+	// 애님 노티파이에서 호출할 함수
+	UFUNCTION(BlueprintCallable, Category="Combat|Combo")
+	void OpenComboWindow();
+
+	UFUNCTION(BlueprintCallable, Category="Combat|Combo")
+	void CloseComboWindow();
+	
+private:
+	// 무기 타입별 입력 처리 함수
+	void HandleUnarmedAttack(bool bPressed);
+	void HandleSwordAttack(bool bPressed);
+	void HandleAssaultRifleAttack(bool bPressed);
+	
+	// 공격 시작
 	void StartAttack();
+	
 	// void StopAttack();
 
 	UAnimMontage* GetCurrentAttackMontage() const;
@@ -65,7 +97,6 @@ private:
 	UFUNCTION()
 	void OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted);
 	
-private:
 	// 섹션 유효성 체크
 	bool IsComboSectionValid(UAnimMontage* Montage, const FName& SectionName) const;
 };

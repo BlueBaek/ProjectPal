@@ -22,18 +22,24 @@ void UCombatComponent::BeginPlay()
 	UE_LOG(LogTemp, Warning, TEXT("OwnerCharacter: %s"), *GetNameSafe(OwnerCharacter));
 }
 
-/*
-void UCombatComponent::ProcessAttack(bool bPressed)
+EWeaponType UCombatComponent::GetCurrentWeaponType() const
 {
-	bAttackPressed = bPressed;
-	
-	if (!bPressed)
+	// 무기 장착 시스템이 이미 있으면 CurrentWeaponData 사용
+	if (CurrentWeaponData)
 	{
-		StartAttack();
+		return CurrentWeaponData->WeaponType;
 	}
-}
-*/
 
+	// 무기 없으면 맨손
+	if (UnarmedData)
+	{
+		return UnarmedData->WeaponType;
+	}
+
+	return EWeaponType::Unarmed;
+}
+
+/*
 // 콤보어택 기반으로 수정
 void UCombatComponent::ProcessAttack(bool bPressed)
 {
@@ -58,45 +64,122 @@ void UCombatComponent::ProcessAttack(bool bPressed)
 	UE_LOG(LogTemp, Warning, TEXT("StartAttack"));
 	StartAttack();
 }
+*/
 
-
-/*
-void UCombatComponent::StartAttack()
+// CurrentWeaponData에 따라 무기 공격 타입 설정
+void UCombatComponent::ProcessAttack(bool bPressed)
 {
-	if (!OwnerCharacter) return;
-
-	UAnimMontage* Montage = GetCurrentAttackMontage();
-	if (!Montage) return;
-
-	UAnimInstance* AnimInst = OwnerCharacter->GetMesh() ? OwnerCharacter->GetMesh()->GetAnimInstance() : nullptr;
-	if (!AnimInst) return;
-
-	// 이미 재생 중이면 아무것도 하지 않음
-	if (AnimInst->Montage_IsPlaying(Montage)) return;
-
-	CurrentAttackMontage = Montage;
-
-	// 1) 먼저 재생 시도
-	const float PlayResult = AnimInst->Montage_Play(Montage);
-	UE_LOG(LogTemp, Warning, TEXT("Montage_Play result=%.3f montage=%s"),
-		PlayResult, *GetNameSafe(Montage));
-
-	// PlayResult가 0이면 재생 실패
-	if (PlayResult <= 0.f)
+	switch (GetCurrentWeaponType())
 	{
-		CurrentAttackMontage = nullptr;
+	case EWeaponType::Unarmed:
+		HandleUnarmedAttack(bPressed);
+		break;
+
+	case EWeaponType::Sword:
+		HandleSwordAttack(bPressed);
+		break;
+
+	case EWeaponType::AssaultRifle:
+		HandleAssaultRifleAttack(bPressed);
+		break;
+
+	default:
+		break;
+	}
+}
+
+bool UCombatComponent::IsAttackMontagePlaying() const
+{
+	if (!OwnerCharacter) return false;
+
+	USkeletalMeshComponent* MeshComp = OwnerCharacter->GetMesh();
+	if (!MeshComp) return false;
+
+	UAnimInstance* AnimInst = MeshComp->GetAnimInstance();
+	if (!AnimInst) return false;
+
+	// 현재 공격 몽타주가 유효하지 않으면 공격 중 아님
+	if (!CurrentAttackMontage) return false;
+
+	// 해당 몽타주가 실제로 재생 중인지 확인
+	return AnimInst->Montage_IsPlaying(CurrentAttackMontage);
+}
+
+void UCombatComponent::OpenComboWindow()
+{
+	bComboWindowOpen = true;
+
+	// 이미 클릭을 버퍼해둔 상태면 즉시 다음 타로 진행
+	if (bBufferedNextAttack)
+	{
+		bBufferedNextAttack = false;
+		bComboWindowOpen = false;
+
+		// 다음 섹션으로
+		if (ComboSections.Num() > 0)
+		{
+			ComboIndex = FMath::Clamp(ComboIndex + 1, 0, ComboSections.Num() - 1);
+		}
+		StartAttack(); // Combo2/Combo3
+	}
+}
+
+void UCombatComponent::CloseComboWindow()
+{
+	bComboWindowOpen = false;
+	bBufferedNextAttack = false;
+
+	// 윈도우가 닫혔는데 다음 입력이 없었다면, 콤보를 끊어주고
+	// 다음 클릭은 다시 1타부터 시작하게 만들기
+	ComboIndex = 0;
+}
+
+void UCombatComponent::HandleUnarmedAttack(bool bPressed)
+{
+	bAttackPressed = bPressed;
+
+	if (bPressed)
+	{
+		StartAttack(); // 1 → 2 → 3 자동 콤보
+	}
+}
+
+void UCombatComponent::HandleSwordAttack(bool bPressed)
+{
+	if (!bPressed) return;
+
+	// 공격 중이 아니면 1타
+	if (!IsAttackMontagePlaying())
+	{
+		ComboIndex = 0;
+		StartAttack();
 		return;
 	}
 
-	// 2) 재생 성공 후 델리게이트 연결
-	FOnMontageBlendingOutStarted BlendOutDelegate;
-	BlendOutDelegate.BindUObject(this, &UCombatComponent::OnAttackMontageBlendingOut);
-	AnimInst->Montage_SetBlendingOutDelegate(BlendOutDelegate, Montage);
-
-	// ✅ 3) 상태 ON (재생이 확정된 뒤에만)
-	OwnerCharacter->Attack(true);
+	// 공격 중이면 콤보 윈도우에서만 예약
+	if (bComboWindowOpen)
+	{
+		bBufferedNextAttack = true;
+	}
 }
-*/
+
+
+void UCombatComponent::HandleAssaultRifleAttack(bool bPressed)
+{
+	/*
+	bAttackPressed = bPressed;
+
+	if (bPressed)
+	{
+		StartAutoFire();
+	}
+	else
+	{
+		StopAutoFire();
+	}
+	*/
+}
+
 
 void UCombatComponent::StartAttack()
 {
@@ -178,9 +261,13 @@ void UCombatComponent::StartAttack()
 // 	GEngine->AddOnScreenDebugMessage(-1, 1.f, FColor::Cyan, TEXT("StopAttack"));
 // }
 
+// 몽타주 가져오기
 UAnimMontage* UCombatComponent::GetCurrentAttackMontage() const
 {
-	// 우선은 무기 없을 때만
+	if (CurrentWeaponData && CurrentWeaponData->AttackMontage)
+	{
+		return CurrentWeaponData->AttackMontage;
+	}
 	return UnarmedData ? UnarmedData->AttackMontage : nullptr;
 }
 
@@ -197,36 +284,33 @@ void UCombatComponent::OnAttackMontageBlendingOut(UAnimMontage* Montage, bool bI
 
 	// 공격 종료: 상태 OFF
 	OwnerCharacter->Attack(false);
-	
 	CurrentAttackMontage = nullptr;
 	
-	/*	콤보 어택으로 교체
-	// 마우스가 아직 눌려있다면 다음 공격 이어서 실행
-	if (bAttackPressed && !bInterrupted)
+	switch (GetCurrentWeaponType())
 	{
-		StartAttack();
-	}
-	*/
-	
-	// 추가 : 홀드 중이면 다음 콤보로 진행
-	if (bAttackPressed)
-	{
-		// 다음 타로 증가 (1->2->3)
-		if (ComboSections.Num() > 0)
+	case EWeaponType::Unarmed:
+		if (bAttackPressed)
 		{
 			ComboIndex = (ComboIndex + 1) % ComboSections.Num();
+			StartAttack();
 		}
 		else
 		{
 			ComboIndex = 0;
 		}
+		break;
 
-		StartAttack();
-	}
-	else
-	{
-		// 버튼 뗐으면 콤보 리셋(다음 공격은 1타부터)
+	case EWeaponType::Sword:
+		// Sword는 “타이밍 클릭”으로만 진행: 여기서 자동 다음타 금지
+		// 콤보 인덱스 리셋은 상황에 맞게(보통 0으로)
 		ComboIndex = 0;
+		bComboWindowOpen = false;
+		bBufferedNextAttack = false;
+		break;
+
+	default:
+		ComboIndex = 0;
+		break;
 	}
 }
 

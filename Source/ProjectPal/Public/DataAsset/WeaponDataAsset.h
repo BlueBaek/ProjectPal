@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Data/WeaponType.h"
 #include "Engine/DataAsset.h"
 #include "WeaponDataAsset.generated.h"
 
@@ -16,6 +17,10 @@ class PROJECTPAL_API UWeaponDataAsset : public UDataAsset
 	GENERATED_BODY()
 	
 public:
+	// 무기 공격 입력 방식
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
+	EWeaponType WeaponType = EWeaponType::Unarmed;
+	
 	UPROPERTY(EditAnywhere, Category = "Visuals")
 	USkeletalMesh* WeaponMesh; // 맨손일 경우 NULL
 	
