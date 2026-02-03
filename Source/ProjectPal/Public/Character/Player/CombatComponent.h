@@ -10,6 +10,7 @@
 class APlayerCharacter;
 class UWeaponDataAsset;
 class UAnimMontage;
+class UAnimInstance;
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTPAL_API UCombatComponent : public UActorComponent
@@ -37,6 +38,10 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Combat|Data")
 	TObjectPtr<UWeaponDataAsset> CurrentWeaponData;
 
+	// 손에 붙어있는 실제 무기 메쉬(컴포넌트)
+	UPROPERTY(VisibleAnywhere, Category="Combat|Weapon")
+	TObjectPtr<USkeletalMeshComponent> EquippedWeaponComp;
+	
 	// 현재 무기의 입력 타입 반환
 	EWeaponType GetCurrentWeaponType() const;
 	
@@ -62,23 +67,34 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="Combat|Combo")
 	TArray<FName> ComboSections = { TEXT("Combo1"), TEXT("Combo2"), TEXT("Combo3") };
 	
-	// =====
-	
 	// ===== Sword 어택구현용 =====
+public:
+	UFUNCTION(BlueprintCallable, Category="Combat|Combo")
+    void OpenComboWindow();
+    
+    UFUNCTION(BlueprintCallable, Category="Combat|Combo")
+    void CloseComboWindow();
 	
+private:
 	// 타이밍 클릭 콤보용
 	bool bComboWindowOpen = false;     // 지금 입력 받아도 되는 구간인지
-	bool bBufferedNextAttack = false;  // 플레이어가 클릭을 미리 눌렀는지
+
+	// 다음 섹션으로 넘기는 공통 처리
+	void TryAdvanceSwordCombo(UAnimInstance* AnimInst, UAnimMontage* Montage);
+
+	// =====
 	
-	bool IsAttackMontagePlaying() const;
+	bool IsAttackMontagePlaying() const;	// 몽타주가 플레이 중인지
+	
+	// ===== 무기 붙이기용 함수 =====
+	void AttachWeapon(UWeaponDataAsset* WeaponDA);
+	void ClearWeapon();
+	void ApplyAnimLayer(UWeaponDataAsset* WeaponDA);
+	void RestoreUnarmedAnimLayer();
 	
 public:
-	// 애님 노티파이에서 호출할 함수
-	UFUNCTION(BlueprintCallable, Category="Combat|Combo")
-	void OpenComboWindow();
-
-	UFUNCTION(BlueprintCallable, Category="Combat|Combo")
-	void CloseComboWindow();
+	UFUNCTION(BlueprintCallable, Category="Combat|Weapon")
+	void EquipWeaponData(UWeaponDataAsset* NewWeaponData);
 	
 private:
 	// 무기 타입별 입력 처리 함수
@@ -88,8 +104,6 @@ private:
 	
 	// 공격 시작
 	void StartAttack();
-	
-	// void StopAttack();
 
 	UAnimMontage* GetCurrentAttackMontage() const;
 	

@@ -21,8 +21,12 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
 	EWeaponType WeaponType = EWeaponType::Unarmed;
 	
-	UPROPERTY(EditAnywhere, Category = "Visuals")
-	USkeletalMesh* WeaponMesh; // 맨손일 경우 NULL
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Visual")
+	TObjectPtr<USkeletalMesh> WeaponMesh; // 맨손일 경우 NULL
+	
+	// 무기 장착 소켓 이름 (예: "RightHandSocket")
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Equip")
+	FName EquipSocketName = TEXT("Socket_Weapon_R");
 	
 	UPROPERTY(EditAnywhere, Category = "Animations")
 	UAnimMontage* AttackMontage; // 공격 모션이 담긴 몽타주

@@ -114,6 +114,10 @@ void AMyPlayerController::SetupInputComponent()
 		                                   &AMyPlayerController::Input_StartAim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
 		                                   &AMyPlayerController::Input_StopAim);
+		
+		// Wheel 장비 변경
+		EnhancedInputComponent->BindAction(EquipChangeAction, ETriggerEvent::Triggered, this,
+									   &AMyPlayerController::Input_EquipChange);
 
 		// Attack
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this,
@@ -196,6 +200,29 @@ void AMyPlayerController::Input_StopAim()
 		GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Red, TEXT("StopAim"));
 	}
 }
+
+void AMyPlayerController::Input_EquipChange(const FInputActionValue& Value)
+{
+	const float WheelAxis = Value.Get<float>();
+	if (FMath::IsNearlyZero(WheelAxis))
+	{
+		return;
+	}
+	
+	// 디바운스: 짧은 시간 내 재호출 무시
+	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
+	if ((Now - LastEquipWheelTimeSec) < EquipWheelDebounceSec)
+	{
+		return;
+	}
+	LastEquipWheelTimeSec = Now;
+
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->ChangeEquipSlotByWheel(WheelAxis);
+	}
+}
+
 
 void AMyPlayerController::Input_StartAttack()
 {

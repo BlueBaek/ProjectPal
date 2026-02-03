@@ -138,6 +138,29 @@ private:
 	// AnimLayer적용
 	void ApplyUnarmedAnimLayer();
 	
+	// ===== 장비 교체 ===== 
+	// 장비 슬롯 수
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Item|Equip", meta=(AllowPrivateAccess="true", ClampMin="1"))
+	int32 EquipSlotCount = 4;
+
+	// 현재 장비 Index
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Item|Equip", meta=(AllowPrivateAccess="true"))
+	int32 CurrentEquipSlotIndex = 0;
+	
+	// 무기 전용 슬롯 배열
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Equip|Slots", meta=(AllowPrivateAccess="true"))
+	TArray<TObjectPtr<UWeaponDataAsset>> EquipWeaponSlots;
+	
+	// 테스트용: SwordData를 BP에서 지정해두고 2번째 슬롯에 자동 배치
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Equip|Slots", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UWeaponDataAsset> SwordData;
+	
+	// UI 갱신용(선택 슬롯 변경 이벤트)
+	DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquipSlotChanged, int32, NewIndex, int32, OldIndex);
+
+	UPROPERTY(BlueprintAssignable, Category="Item|Equip")
+	FOnEquipSlotChanged OnEquipSlotChanged;
+
 public:
 	// 바인딩할 함수
 	void Move(const FInputActionValue& Value); // 기본 움직임(Jogging)
@@ -156,4 +179,19 @@ public:
 	FORCEINLINE UPlayerStatComponent* GetStatComponent() const { return StatComponent; }	// StatComponent
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }	// CombatComponent
 	
+	UFUNCTION(BlueprintCallable, Category="Item|Equip")
+	void SetEquipSlotCount(int32 NewCount);
+
+	UFUNCTION(BlueprintCallable, Category="Item|Equip")
+	void ChangeEquipSlotByWheel(float WheelAxisValue); // 휠 입력값(+/-)
+	
+	UFUNCTION(BlueprintPure, Category="Item|Equip")
+	int32 GetCurrentEquipSlotIndex() const { return CurrentEquipSlotIndex; }
+	
+	// 즉시 장착용 함수
+	UFUNCTION(BlueprintCallable, Category="Equip|Slots")
+	void EquipWeaponFromCurrentSlot();
+
+	UFUNCTION(BlueprintCallable, Category="Equip|Slots")
+	void SetWeaponToSlot(int32 SlotIndex, UWeaponDataAsset* WeaponData);
 };

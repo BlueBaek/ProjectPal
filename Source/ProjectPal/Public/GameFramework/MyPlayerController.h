@@ -61,6 +61,10 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* AimAction;
 	
+	// 장비 슬롯 변경(마우스 휠)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category="Input")
+	UInputAction* EquipChangeAction;
+	
 	// 공격 (CombatComponent에서 적용)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* AttackAction;
@@ -85,4 +89,13 @@ protected:
 	void Input_StopAim();
 	void Input_StartAttack();
 	void Input_StopAttack();
+	void Input_EquipChange(const FInputActionValue& Value);
+	
+private:
+	// 휠 디바운스용
+	double LastEquipWheelTimeSec = -999.0;
+
+	// 0.06~0.12 추천 (휠 한 칸이 1~2프레임 이상 들어오는 환경 대비)
+	UPROPERTY(EditAnywhere, Category="Input|Wheel")
+	float EquipWheelDebounceSec = 0.08f;
 };

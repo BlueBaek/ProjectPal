@@ -63,7 +63,7 @@ APlayerCharacter::APlayerCharacter()
 	static ConstructorHelpers::FObjectFinder<UAnimMontage> RollRightMontageAsset(
 		TEXT("/Game/_Pal/BluePrint/Character/Player/Montage/AM_Pal_Player_RollRight.AM_Pal_Player_RollRight"));
 	if (RollRightMontageAsset.Succeeded()) { RollRightMontage = RollRightMontageAsset.Object; }
-	
+
 	// Component 부착
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	StatComponent = CreateDefaultSubobject<UPlayerStatComponent>(TEXT("StatComponent"));
@@ -73,11 +73,23 @@ APlayerCharacter::APlayerCharacter()
 void APlayerCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// 최초 스탯 적용 (레벨, HP, Stamina, Attack, Defense, true : 최대 최력, 최대 스테미나로 적용)
 	StatComponent->InitializeStats(1, 500.f, 100.f, 100.f, 100.f, true);
 	// 맨손 AnimLayer가 적용되는지 확인
 	ApplyUnarmedAnimLayer();
+	
+	// 슬롯 배열 크기 보장
+	EquipWeaponSlots.SetNum(EquipSlotCount);
+
+	// ✅ "2번째 칸" = 인덱스 1
+	if (SwordData)
+	{
+		EquipWeaponSlots[1] = SwordData;
+	}
+
+	// 시작 시 현재 슬롯 무기 장착(원하면)
+	EquipWeaponFromCurrentSlot();
 }
 
 // Called every frame
@@ -105,7 +117,7 @@ void APlayerCharacter::Tick(float DeltaTime)
 
 		SetActorTickEnabled(false);
 	}
-	
+
 	// ===== 스탯 컴포넌트 디버그용 =====
 	if (StatComponent)
 	{
@@ -121,6 +133,15 @@ void APlayerCharacter::SetActionState(EMyActionState NewState)
 	// 필요에 따라 이곳에서 OnStateChanged 델리게이트 브로드캐스트 가능
 }
 
+void APlayerCharacter::SetEquipSlotCount(int32 NewCount)
+{
+	NewCount = FMath::Max(1, NewCount);
+	EquipSlotCount = NewCount;
+
+	// 슬롯 수가 바뀌면 현재 인덱스가 범위를 벗어날 수 있으니 보정
+	CurrentEquipSlotIndex = FMath::Clamp(CurrentEquipSlotIndex, 0, EquipSlotCount - 1);
+}
+
 void APlayerCharacter::Move(const FInputActionValue& Value)
 {
 	FVector2D MovementVector = Value.Get<FVector2D>();
@@ -128,7 +149,7 @@ void APlayerCharacter::Move(const FInputActionValue& Value)
 	// 아주 작은 입력은 0으로 처리(데드존)
 	if (FMath::Abs(MovementVector.X) < 0.1f) MovementVector.X = 0.f;
 	if (FMath::Abs(MovementVector.Y) < 0.1f) MovementVector.Y = 0.f;
-	
+
 	CurrentMoveInput2D = MovementVector;
 
 	if (Controller)
@@ -187,17 +208,17 @@ void APlayerCharacter::Roll()
 	// 몽타주를 실행시킬 Anim인스턴스
 	TObjectPtr<UAnimInstance> AnimInstance = GetMesh()->GetAnimInstance();
 	if (!AnimInstance) return;
-	
+
 	// 구르기 시작 순간 조준 여부를 저장
 	const bool bWasAiming = bIsAiming;
 
 	// --- 조준 여부에 따라 사용할 몽타주 결정 ---
-	TObjectPtr<UAnimMontage> MontageToPlay = RollMontage;	// 실행할 몽타주 선택, 기본값 앞구르기
-	if (bWasAiming)	// 조준 중이면 몽타주 선택
+	TObjectPtr<UAnimMontage> MontageToPlay = RollMontage; // 실행할 몽타주 선택, 기본값 앞구르기
+	if (bWasAiming) // 조준 중이면 몽타주 선택
 	{
 		MontageToPlay = SelectRollMontage_Aiming();
 	}
-	else	// 그렇지 않으면 기본 구르기(비조준 상태)
+	else // 그렇지 않으면 기본 구르기(비조준 상태)
 	{
 		// --- 즉시 회전 로직 추가 ---
 		// 현재 이동 입력 벡터를 가져옵니다 (MoveAction의 현재 값)
@@ -222,10 +243,10 @@ void APlayerCharacter::Roll()
 	{
 		SetAiming(false);
 	}
-	
+
 	// ActionState 업데이트
 	SetActionState(EMyActionState::Rolling);
-	
+
 	// IMC 업데이트
 	if (AMyPlayerController* PC = Cast<AMyPlayerController>(GetController()))
 	{
@@ -237,7 +258,7 @@ void APlayerCharacter::Roll()
 	AnimInstance->Montage_Play(MontageToPlay);
 
 	// 몽타주의 끝을 확인하는 방식을 타이머 대신 델리게이트 방식으로 수정
-	FOnMontageEnded EndDelegate;	// 몽타주 재생 종료 델리게이트 인스턴스
+	FOnMontageEnded EndDelegate; // 몽타주 재생 종료 델리게이트 인스턴스
 	EndDelegate.BindUObject(this, &APlayerCharacter::OnRollMontageEnded);
 	AnimInstance->Montage_SetEndDelegate(EndDelegate, MontageToPlay);
 }
@@ -261,7 +282,7 @@ TObjectPtr<UAnimMontage> APlayerCharacter::SelectRollMontage_Aiming() const
 {
 	// 방향키 입력 갱신용
 	const FVector2D Input = CurrentMoveInput2D;
-	
+
 	// 방향입력 없음 : 뒷구르기
 	// 몽타주가 없을 때를 대비해 Return할 때 기존에 만들어 둔 RollMontage 사용(방어적 프로그래밍)
 	if (Input.IsNearlyZero())
@@ -270,12 +291,12 @@ TObjectPtr<UAnimMontage> APlayerCharacter::SelectRollMontage_Aiming() const
 	}
 
 	// 좌 or 좌대각선 : 왼쪽 구르기
-	if (Input.X < 0.f)  // Left or LeftDiagonal
+	if (Input.X < 0.f) // Left or LeftDiagonal
 	{
 		return RollLeftMontage ? RollLeftMontage : RollMontage;
 	}
 	// 우 or 우대각선 : 오른쪽 구르기
-	if (Input.X > 0.f)  // Right or RightDiagonal
+	if (Input.X > 0.f) // Right or RightDiagonal
 	{
 		return RollRightMontage ? RollRightMontage : RollMontage;
 	}
@@ -285,7 +306,7 @@ TObjectPtr<UAnimMontage> APlayerCharacter::SelectRollMontage_Aiming() const
 	{
 		return RollMontage; // 기존 앞구르기
 	}
-	
+
 	// 뒤 구르기
 	return RollBwdMontage ? RollBwdMontage : RollMontage;
 }
@@ -294,49 +315,25 @@ void APlayerCharacter::SetAiming(bool isAiming)
 {
 	// Idle이 아니라면 활성되지 않음
 	if (!(ActionState == EMyActionState::Idle)) return;
-	
+
 	bIsAiming = isAiming;
 
 	// 조준 상태가 바뀌면 보간(Interpolation)을 위해 Tick 활성화
 	SetActorTickEnabled(true);
-
-	// 조준 모드에 따라 캐릭터 움직임에 변화를 주기 위함
-	// if (bIsAiming) // 조준 중
-	// {
-	// 	// 이동 방향으로 자동회전 false
-	// 	GetCharacterMovement()->bOrientRotationToMovement = false;
-	// 	// 컨트롤러의 회전값(Yaw)을 사용
-	// 	bUseControllerRotationYaw = true;
-	// 	// 이동 속도 감소
-	// 	GetCharacterMovement()->MaxWalkSpeed = AimWalkSpeed;
-	// }
-	// else // 조준 해제
-	// {
-	// 	// 이동 방향으로 자동회전 true
-	// 	GetCharacterMovement()->bOrientRotationToMovement = true;
-	// 	// 이동 방향으로 캐릭터가 회전하도록 복구
-	// 	bUseControllerRotationYaw = false;
-	// 	// 이동 속도 복구
-	// 	GetCharacterMovement()->MaxWalkSpeed = JogSpeed;
-	// }
-	UpdateRotationControl();	// 시점 고정 함수
-	UpdateMoveSpeed();	// 속도 변화용 함수
-
-	/* 디버깅용 출력 메세지
-	GEngine->AddOnScreenDebugMessage(-1, 2.f, FColor::Green,
-	                                 FString::Printf(TEXT("Aiming : %s"), bIsAiming ? TEXT("True") : TEXT("False")));
-	                                 */
+	
+	UpdateRotationControl(); // 시점 고정 함수
+	UpdateMoveSpeed(); // 속도 변화용 함수
 }
 
 void APlayerCharacter::Attack(bool isAttacking)
 {
 	bIsAttacking = isAttacking;
 	// 공격 중엔 시점 고정
-	
+
 	// bUseControllerRotationYaw = isAttacking;
 	// GetCharacterMovement()->bOrientRotationToMovement = !isAttacking;
-	UpdateRotationControl();	// 시점 고정 함수로 교체
-	
+	UpdateRotationControl(); // 시점 고정 함수로 교체
+
 	UpdateMoveSpeed();
 	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, "Attacking: " + bIsAttacking ? "true" : "false");
 }
@@ -368,7 +365,7 @@ void APlayerCharacter::UpdateMoveSpeed()
 void APlayerCharacter::UpdateRotationControl()
 {
 	if (!GetCharacterMovement()) return;
-	
+
 	if (bIsAiming || bIsAttacking)
 	{
 		// 이동 방향으로 자동회전 false
@@ -383,7 +380,75 @@ void APlayerCharacter::UpdateRotationControl()
 		// 이동 방향으로 캐릭터가 회전하도록 복구
 		bUseControllerRotationYaw = false;
 	}
+}
+
+void APlayerCharacter::ChangeEquipSlotByWheel(float WheelAxisValue)
+{
+	// 구르는 중이면 막기
+	if (ActionState == EMyActionState::Rolling) return;
+	// 공격 중이면 막기
+	if (bIsAttacking) return;
 	
+	// 마우스 휠 축 입력 (-1, 0, 1)
+	if (FMath::IsNearlyZero(WheelAxisValue)) return;	// 부동소수점 오차 해결
+	if (EquipSlotCount <= 1) return;
+	
+	const int32 OldIndex = CurrentEquipSlotIndex;
+	
+	// WheelAxisValue < 0 : 위로 굴림(이전 슬롯)
+	// WheelAxisValue > 0 : 아래로 굴림(다음 슬롯)
+	const int32 Step = (WheelAxisValue > 0.f) ? -1 : +1;
+	
+	//
+	CurrentEquipSlotIndex = (CurrentEquipSlotIndex + Step) % EquipSlotCount;
+	if (CurrentEquipSlotIndex < 0 )
+	{
+		CurrentEquipSlotIndex += EquipSlotCount;
+	}
+	
+	if (OldIndex != CurrentEquipSlotIndex)
+	{
+		// 여기서 즉시 장착!
+		EquipWeaponFromCurrentSlot();
+		OnEquipSlotChanged.Broadcast(CurrentEquipSlotIndex, OldIndex);
+		
+		// 디버그용
+		if (GEngine)
+		{
+			GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Yellow,
+				FString::Printf(TEXT("Equip Slot: %d / %d"), CurrentEquipSlotIndex + 1, EquipSlotCount)
+			);
+		}
+	}
+}
+
+// 현재 슬롯 무기를 CombatComponent에 넘겨 장착
+void APlayerCharacter::EquipWeaponFromCurrentSlot()
+{
+	EquipWeaponSlots.SetNum(EquipSlotCount);
+
+	UWeaponDataAsset* WeaponDA =
+		EquipWeaponSlots.IsValidIndex(CurrentEquipSlotIndex)
+		? EquipWeaponSlots[CurrentEquipSlotIndex]
+		: nullptr;
+
+	if (!CombatComponent) return; // 너 프로젝트의 CombatComponent 멤버/Getter로 맞추기
+
+	// 빈 슬롯이면 Unarmed로 폴백하고 싶다면 null 전달 허용 + Combat에서 처리
+	CombatComponent->EquipWeaponData(WeaponDA);
+	
+	// 디버그 용
+	UE_LOG(LogTemp, Warning, TEXT("Equip Slot %d: %s"), CurrentEquipSlotIndex,
+	WeaponDA ? *WeaponDA->GetName() : TEXT("Unarmed"));
+}
+
+// 슬롯에 무기를 넣는 함수
+void APlayerCharacter::SetWeaponToSlot(int32 SlotIndex, UWeaponDataAsset* WeaponData)
+{
+	EquipWeaponSlots.SetNum(EquipSlotCount);
+
+	if (!EquipWeaponSlots.IsValidIndex(SlotIndex)) return;
+	EquipWeaponSlots[SlotIndex] = WeaponData;
 }
 
 void APlayerCharacter::ApplyUnarmedAnimLayer()
