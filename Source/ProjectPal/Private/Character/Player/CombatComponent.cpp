@@ -90,7 +90,6 @@ void UCombatComponent::OpenComboWindow()
 }
 
 
-
 void UCombatComponent::CloseComboWindow()
 {
 	bComboWindowOpen = false;
@@ -99,10 +98,12 @@ void UCombatComponent::CloseComboWindow()
 void UCombatComponent::TryAdvanceSwordCombo(UAnimInstance* AnimInst, UAnimMontage* Montage)
 {
 	if (!AnimInst || !Montage) return;
-
-	// 다음 콤보 섹션이 있어야 함
+	
 	const int32 NextIndex = ComboIndex + 1;
+	
+	// ComboSection이 존재하지 않으면 종료
 	if (!ComboSections.IsValidIndex(NextIndex)) return;
+
 
 	const FName NextSection = ComboSections[NextIndex];
 	if (!IsComboSectionValid(Montage, NextSection)) return;
@@ -153,6 +154,7 @@ void UCombatComponent::AttachWeapon(UWeaponDataAsset* WeaponDA)
 	EquippedWeaponComp->SetRelativeScale3D(FVector(1.f));
 }
 
+// 무기 없애기
 void UCombatComponent::ClearWeapon()
 {
 	if (!EquippedWeaponComp) return;
@@ -243,7 +245,7 @@ void UCombatComponent::HandleSwordAttack(bool bPressed)
 	{
 		if (bComboWindowOpen)
 		{
-			// ✅ 버전 A(선입력 제거): 윈도우에서만 점프
+			// 윈도우에서만 점프
 			TryAdvanceSwordCombo(AnimInst, Montage);
 		}
 		return;
@@ -287,7 +289,7 @@ void UCombatComponent::StartAttack()
 
 	UAnimInstance* AnimInst = OwnerCharacter->GetMesh() ? OwnerCharacter->GetMesh()->GetAnimInstance() : nullptr;
 	if (!AnimInst) return;
-	
+
 	if (AnimInst->Montage_IsPlaying(Montage))
 	{
 		return;
@@ -403,5 +405,3 @@ bool UCombatComponent::IsComboSectionValid(UAnimMontage* Montage, const FName& S
 	const int32 SectionIndex = Montage->GetSectionIndex(SectionName);
 	return SectionIndex != INDEX_NONE;
 }
-
-
