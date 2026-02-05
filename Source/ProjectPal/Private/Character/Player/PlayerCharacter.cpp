@@ -315,6 +315,9 @@ void APlayerCharacter::SetAiming(bool isAiming)
 {
 	// Idle이 아니라면 활성되지 않음
 	if (!(ActionState == EMyActionState::Idle)) return;
+	
+	// sword 공격중엔 조준모드 사용 불가.
+	if (CombatComponent->GetCurrentWeaponType() == EWeaponType::Sword && bIsAttacking == true) return;
 
 	bIsAiming = isAiming;
 

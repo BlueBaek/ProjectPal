@@ -42,9 +42,6 @@ private:
 	UPROPERTY(VisibleAnywhere, Category="Combat|Weapon")
 	TObjectPtr<USkeletalMeshComponent> EquippedWeaponComp;
 	
-	// 현재 무기의 입력 타입 반환
-	EWeaponType GetCurrentWeaponType() const;
-	
 	// 지금 재생 중인 공격 몽타주 추적
 	UPROPERTY()
 	TObjectPtr<UAnimMontage> CurrentAttackMontage;
@@ -88,13 +85,16 @@ private:
 	
 	// ===== 무기 붙이기용 함수 =====
 	void AttachWeapon(UWeaponDataAsset* WeaponDA);
-	void ClearWeapon();
-	void ApplyAnimLayer(UWeaponDataAsset* WeaponDA);
-	void RestoreUnarmedAnimLayer();
+	void ClearWeapon();	// 무기 제거(visual)
+	void ApplyAnimLayer(UWeaponDataAsset* WeaponDA);	// 애님레이어 적용
+	void RestoreUnarmedAnimLayer();	// UnarmedLayer
 	
 public:
 	UFUNCTION(BlueprintCallable, Category="Combat|Weapon")
 	void EquipWeaponData(UWeaponDataAsset* NewWeaponData);
+	
+	// 현재 무기의 타입 반환
+	EWeaponType GetCurrentWeaponType() const;
 	
 private:
 	// 무기 타입별 입력 처리 함수
