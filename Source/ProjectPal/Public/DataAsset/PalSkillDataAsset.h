@@ -10,6 +10,8 @@
  * 
  */
 
+enum class EPalType : uint8;
+
 UENUM(BlueprintType)
 enum class EPalSkillTargetType : uint8
 {
@@ -85,13 +87,7 @@ struct FPalSkillDamage
 	// (옵션) 데미지 타입
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
 	TSubclassOf<UDamageType> DamageTypeClass;
-
-	// (옵션) 레벨별 데미지 커브
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
-	TObjectPtr<UCurveFloat> DamageByLevelCurve = nullptr;
-
-	// 레벨로 데미지 계산(커브가 있으면 커브 사용)
-	float GetDamage(int32 Level) const;
+	
 };
 
 USTRUCT(BlueprintType)
@@ -130,6 +126,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill", meta=(MultiLine=true))
 	FText Description;
 
+	// 스킬 속성
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill|Attribute")
+	EPalType SkillType;
+	
 	// 발동 조건/범위
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
 	FPalSkillActivation Activation;
@@ -145,19 +145,4 @@ public:
 	// 피해 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
 	FPalSkillDamage Damage;
-
-	// (옵션) 레벨별 쿨타임 커브
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill|Curves")
-	TObjectPtr<UCurveFloat> CooldownByLevelCurve = nullptr;
-
-	// (옵션) 레벨별 사거리 커브
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill|Curves")
-	TObjectPtr<UCurveFloat> CastRangeByLevelCurve = nullptr;
-
-	// === Helper ===
-	UFUNCTION(BlueprintCallable, Category="Skill")
-	float GetCooldown(int32 Level) const;
-
-	UFUNCTION(BlueprintCallable, Category="Skill")
-	float GetCastRange(int32 Level) const;
 };

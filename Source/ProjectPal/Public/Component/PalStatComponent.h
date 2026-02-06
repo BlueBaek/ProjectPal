@@ -36,8 +36,6 @@ private:
 	// 종족 값 : 방어력
 	int32 SDefense;
 	
-	FName PalName;
-	
 protected:
 	// ===== 개체 값 ===== (1 ~ 100까지 랜덤으로)
 	// 개체 체력
@@ -87,16 +85,16 @@ public:
 	void SetLevel(int32 lv) {Level = lv;}
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")   
-	int32 GetMaxHP() const { return MaxHP; }
+	float GetMaxHP() const { return MaxHP; }
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
-	int32 GetAttack() const { return Attack; }
+	float GetAttack() const { return Attack; }
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
-	int32 GetDefense() const { return Defense; }
+	float GetDefense() const { return Defense; }
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
-	int32 GetCurrentHP() const { return CurrentHP; }
+	float GetCurrentHP() const { return CurrentHP; }
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
 	void ApplyDamage(int32 Damage);

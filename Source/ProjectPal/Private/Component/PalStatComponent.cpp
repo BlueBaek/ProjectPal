@@ -39,11 +39,14 @@ void UPalStatComponent::TickComponent(float DeltaTime, ELevelTick TickType, FAct
 void UPalStatComponent::InitializeStats(UDataTable* DT, FName RowName)
 {
 	const FPalData* Row = DT ? DT->FindRow<FPalData>(RowName, TEXT("PalData")) : nullptr;
+	if (!Row) return;
 	
+	// 종족값 설정
 	SHP = Row->SpeciesHP;
 	SAttack = Row->SpeciesAttack;
 	SDefense = Row->SpeciesDefense;
 	
+	// 개체치 설정
 	IndividualHP = FMath::RandRange(1, 100);
 	IndividualAttack = FMath::RandRange(1, 100);
 	IndividualDefense =	FMath::RandRange(1, 100);
@@ -51,10 +54,16 @@ void UPalStatComponent::InitializeStats(UDataTable* DT, FName RowName)
 	SetStat();
 }
 
+// 팰월드 팰의 기본 능력치 공식을 따름
 void UPalStatComponent::SetStat()
 {
+	// HP 공식
 	MaxHP = 500 + Level * 5 + Level * (SHP * 0.5) * (1 + IndividualHP * 0.003);
+	
+	// ATK 공식
 	Attack =  100 + Level * (SAttack * 0.075) * (1 + IndividualAttack * 0.003);
+	
+	// DEF 공식
 	Defense = 50 + Level * (SDefense * 0.075) * (1 + IndividualDefense * 0.003);
 }
 
