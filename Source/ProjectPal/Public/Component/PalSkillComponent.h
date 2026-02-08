@@ -7,6 +7,7 @@
 #include "PalSkillComponent.generated.h"
 
 class UPalSkillDataAsset;
+class APJ_GrassTornado;
 
 // Delegate : UI 갱신용
 // Active스킬 슬롯(index 0 ~ 2) 변경
@@ -124,6 +125,9 @@ private:
 	
 	// ===== 테스트용 =====
 public:
-	UFUNCTION(BlueprintCallable, Category="Pal|Skill|Test")
+	UFUNCTION(BlueprintCallable, Category="Test|Skill")
 	void Cast_Test_GrassTornado(AActor* Target);
+	
+	UPROPERTY(EditDefaultsOnly, Category="Test|Skill")
+	TSubclassOf<APJ_GrassTornado> GrassTornadoClass;
 };

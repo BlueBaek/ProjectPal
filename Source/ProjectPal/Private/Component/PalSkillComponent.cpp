@@ -28,12 +28,12 @@ void UPalSkillComponent::BeginPlay()
 	}
 
 	SelectedActiveSlotIndex = FMath::Clamp(SelectedActiveSlotIndex, 0, ActiveSlotCount - 1);
-	
 }
 
 
 // Called every frame
-void UPalSkillComponent::TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction)
+void UPalSkillComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                       FActorComponentTickFunction* ThisTickFunction)
 {
 	Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
@@ -90,11 +90,11 @@ bool UPalSkillComponent::LearnSkill(UPalSkillDataAsset* SkillAsset)
 		if (!Skills[i].Skill)
 		{
 			Skills[i].Skill = SkillAsset;
-			OnSkillSlotChanged.Broadcast(i, SkillAsset);	// 즉시 UI 갱신
-			return true;	// 채웠으면 return
+			OnSkillSlotChanged.Broadcast(i, SkillAsset); // 즉시 UI 갱신
+			return true; // 채웠으면 return
 		}
 	}
-	
+
 	// Active가 꽉 찼으면 learned 영역(3번 이후)에 추가
 	FPalSkillSlot NewSlot;
 	NewSlot.Skill = SkillAsset;
@@ -114,7 +114,7 @@ bool UPalSkillComponent::EquipLearnedSkillToActiveSlot(int32 ActiveIndex, int32 
 	// Learned 영역 인덱스 유효성 검사
 	if (!IsValidLearnedIndex(LearnedIndex))
 		return false;
-	
+
 	UPalSkillDataAsset* LearnedSkill = Skills[LearnedIndex].Skill;
 	// DataAsset 유효성 검사
 	if (!LearnedSkill)
@@ -191,7 +191,7 @@ bool UPalSkillComponent::IsSkillOnCooldown(UPalSkillDataAsset* Skill) const
 	{
 		return (*Rem) > 0.f;
 	}
-	
+
 	// 아니면 false
 	return false;
 }
@@ -254,19 +254,19 @@ bool UPalSkillComponent::IsValidLearnedIndex(int32 LearnedIndex) const
 void UPalSkillComponent::Cast_Test_GrassTornado(AActor* Target)
 {
 	UE_LOG(LogTemp, Warning,
-		TEXT("[Skill] Cast_Test_GrassTornado ENTER | Owner=%s Target=%s"),
-		GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"),
-		Target ? *Target->GetName() : TEXT("NULL"));
-	
+	       TEXT("[Skill] Cast_Test_GrassTornado ENTER | Owner=%s Target=%s"),
+	       GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"),
+	       Target ? *Target->GetName() : TEXT("NULL"));
+
 	AActor* Caster = GetOwner();
 	if (!Caster || !GetWorld()) return;
 
 	// 테스트 파라미터
 	const float PrepareTime = 1.0f;
-	const float MoveSpeed   = 220.f;
-	const float LifeTime    = 3.0f;   // ✅ 3초 후 자동 소멸
-	const float DamagePerTick   = 6.f;
-	const float DamageInterval  = 0.2f;
+	const float MoveSpeed = 220.f;
+	const float LifeTime = 3.0f; // ✅ 3초 후 자동 소멸
+	const float DamagePerTick = 6.f;
+	const float DamageInterval = 0.2f;
 
 	const FVector CasterLoc = Caster->GetActorLocation();
 	const FRotator CasterRot = Caster->GetActorRotation();
@@ -281,11 +281,18 @@ void UPalSkillComponent::Cast_Test_GrassTornado(AActor* Target)
 	Params.Owner = Caster;
 	Params.Instigator = Cast<APawn>(Caster);
 
+
+	if (!GrassTornadoClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Skill] GrassTornadoClass is NULL. Set it in BP/Defaults."));
+		return;
+	}
+
 	APJ_GrassTornado* TornadoL = GetWorld()->SpawnActor<APJ_GrassTornado>(
-		APJ_GrassTornado::StaticClass(), SpawnL, CasterRot, Params);
+		GrassTornadoClass, SpawnL, CasterRot, Params);
 
 	APJ_GrassTornado* TornadoR = GetWorld()->SpawnActor<APJ_GrassTornado>(
-		APJ_GrassTornado::StaticClass(), SpawnR, CasterRot, Params);
+		GrassTornadoClass, SpawnR, CasterRot, Params);
 
 	if (!TornadoL || !TornadoR) return;
 
@@ -293,10 +300,10 @@ void UPalSkillComponent::Cast_Test_GrassTornado(AActor* Target)
 	TornadoR->InitTornado(Caster, Target, MoveSpeed, LifeTime, DamagePerTick, DamageInterval);
 
 	UE_LOG(LogTemp, Warning,
-	TEXT("[Skill] Spawn Tornado | L=%s R=%s"),
-	TornadoL ? *TornadoL->GetName() : TEXT("NULL"),
-	TornadoR ? *TornadoR->GetName() : TEXT("NULL"));
-	
+	       TEXT("[Skill] Spawn Tornado | L=%s R=%s"),
+	       TornadoL ? *TornadoL->GetName() : TEXT("NULL"),
+	       TornadoR ? *TornadoR->GetName() : TEXT("NULL"));
+
 	// PrepareTime 후 "발사"(방향 고정, 호밍 없음)
 	FTimerHandle Handle;
 	GetWorld()->GetTimerManager().SetTimer(

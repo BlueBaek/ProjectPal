@@ -7,6 +7,8 @@
 #include "PJ_GrassTornado.generated.h"
 
 class USphereComponent;
+class UParticleSystem;
+class UParticleSystemComponent;
 
 UCLASS()
 class PROJECTPAL_API APJ_GrassTornado : public AActor
@@ -56,7 +58,15 @@ private:
 
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USphereComponent> DamageSphere;
+	
+	// ✅ 캐스케이드 컴포넌트
+	UPROPERTY(VisibleAnywhere)
+	TObjectPtr<UParticleSystemComponent> ParticleComp;
 
+	// ✅ 에디터에서 지정할 캐스케이드 시스템(UParticleSystem)
+	UPROPERTY(EditDefaultsOnly, Category="VFX")
+	TObjectPtr<UParticleSystem> TornadoPS;
+	
 	UPROPERTY()
 	TObjectPtr<AActor> Caster;
 

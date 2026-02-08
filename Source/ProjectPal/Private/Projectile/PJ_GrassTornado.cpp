@@ -5,6 +5,7 @@
 
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
+#include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 APJ_GrassTornado::APJ_GrassTornado()
@@ -30,6 +31,12 @@ APJ_GrassTornado::APJ_GrassTornado()
 	DamageSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	DamageSphere->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Overlap);
 	
+	ParticleComp = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ParticleComp"));
+	ParticleComp->SetupAttachment(Root);
+	ParticleComp->bAutoActivate = true;               // 자동 재생
+	ParticleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	ParticleComp->SetHiddenInGame(false);
+	
 	DamageSphere->OnComponentBeginOverlap.AddDynamic(this, &APJ_GrassTornado::OnDamageBeginOverlap);
 	DamageSphere->OnComponentEndOverlap.AddDynamic(this, &APJ_GrassTornado::OnDamageEndOverlap);
 }
@@ -39,6 +46,12 @@ void APJ_GrassTornado::BeginPlay()
 {
 	Super::BeginPlay();
 	
+	// ✅ 시스템 에셋 연결(필수)
+	if (ParticleComp && TornadoPS)
+	{
+		ParticleComp->SetTemplate(TornadoPS);
+		ParticleComp->ActivateSystem(true);
+	}
 }
 
 // Called every frame
