@@ -3,10 +3,10 @@
 
 #include "Character/Pal/PalCharacter.h"
 
-#include "EngineUtils.h"
 #include "Component/PalSkillComponent.h"
 #include "Component/PalStatComponent.h"
 #include "Data/PalData.h"
+#include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
 APalCharacter::APalCharacter()
@@ -17,6 +17,8 @@ APalCharacter::APalCharacter()
 	PalStatComponent = CreateDefaultSubobject<UPalStatComponent>(TEXT("PalStatComponent"));
 	PalSkillComponent = CreateDefaultSubobject<UPalSkillComponent>(TEXT("PalSkillComponent"));
 
+	// 팰의 기본 움직임 속도 제한
+	MoveState = EPalMoveState::Walk;
 }
 
 // Called when the game starts or when spawned
@@ -71,16 +73,6 @@ void APalCharacter::BeginPlay()
 		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetAttack()) : -1,
 		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetDefense()) : -1
 	);
-	
-	UE_LOG(LogTemp, Warning, TEXT("[Pal] BeginPlay: %s  AutoTest=%d  SkillComp=%s"),
-		*GetName(),
-		bTestCastGrassTornadoOnBeginPlay ? 1 : 0,
-		PalSkillComponent ? TEXT("Valid") : TEXT("NULL"));
-	
-	if (bTestCastGrassTornadoOnBeginPlay)
-	{
-		TestCastGrassTornadoOnce();
-	}
 }
 
 // Called every frame
@@ -88,6 +80,36 @@ void APalCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+}
+
+void APalCharacter::ApplyMoveSpeed()
+{
+	if (!GetCharacterMovement())
+		return;
+
+	switch (MoveState)
+	{
+	case EPalMoveState::Idle:
+		GetCharacterMovement()->MaxWalkSpeed = 0.f;
+		break;
+
+	case EPalMoveState::Walk:
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
+		break;
+
+	case EPalMoveState::Run:
+		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+		break;
+	}
+}
+
+void APalCharacter::SetMoveState(EPalMoveState NewState)
+{
+	if (MoveState == NewState)
+		return;
+
+	MoveState = NewState;
+	ApplyMoveSpeed();
 }
 
 bool APalCharacter::LoadPalData()
@@ -139,43 +161,4 @@ bool APalCharacter::LoadPalData()
 	}
 
 	return true;
-}
-
-// ===== 테스트용 =====
-void APalCharacter::TestCastGrassTornadoOnce()
-{
-	if (!PalSkillComponent || !GetWorld())
-		return;
-
-	AActor* BestTarget = nullptr;
-	float BestDistSq = FLT_MAX;
-
-	const FVector MyLoc = GetActorLocation();
-
-	// 테스트용: 가장 가까운 Pawn을 타겟으로
-	for (TActorIterator<APawn> It(GetWorld()); It; ++It)
-	{
-		APawn* Candidate = *It;
-		if (!Candidate || Candidate == this)
-			continue;
-
-		const float DistSq = FVector::DistSquared(MyLoc, Candidate->GetActorLocation());
-		if (DistSq < BestDistSq)
-		{
-			BestDistSq = DistSq;
-			BestTarget = Candidate;
-		}
-	}
-
-	UE_LOG(LogTemp, Warning, TEXT("[Pal] BestTarget=%s  Dist=%.1f"),
-		BestTarget ? *BestTarget->GetName() : TEXT("NULL"),
-		BestTarget ? FMath::Sqrt(BestDistSq) : -1.f);
-	
-	if (!BestTarget) return;
-
-	// 👉 테스트 스킬 실행 (Grass Tornado)
-	PalSkillComponent->Cast_Test_GrassTornado(BestTarget);
-
-	// 안전장치: 다시는 실행 안 되게
-	bTestCastGrassTornadoOnBeginPlay = false;
 }

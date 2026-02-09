@@ -11,6 +11,7 @@
  */
 
 enum class EPalType : uint8;
+class UPalSkillExecution;
 
 UENUM(BlueprintType)
 enum class EPalSkillTargetType : uint8
@@ -19,38 +20,6 @@ enum class EPalSkillTargetType : uint8
 	Enemy       UMETA(DisplayName="Enemy"),
 	Self        UMETA(DisplayName="Self"),
 	Location    UMETA(DisplayName="Location"),
-};
-
-UENUM(BlueprintType)
-enum class EPalSkillRangeType : uint8
-{
-	Radius      UMETA(DisplayName="Radius (AoE)"),
-	Box         UMETA(DisplayName="Box"),
-	Capsule     UMETA(DisplayName="Capsule"),
-};
-
-USTRUCT(BlueprintType)
-struct FPalSkillRange
-{
-	GENERATED_BODY()
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Range")
-	EPalSkillRangeType RangeType = EPalSkillRangeType::Radius;
-
-	// Radius일 때 사용
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Range", meta=(ClampMin="0.0"))
-	float Radius = 200.f;
-
-	// Box일 때 사용 (Half Extent)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Range", meta=(ClampMin="0.0"))
-	FVector BoxHalfExtent = FVector(200.f, 200.f, 100.f);
-
-	// Capsule일 때 사용
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Range", meta=(ClampMin="0.0"))
-	float CapsuleRadius = 150.f;
-
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Range", meta=(ClampMin="0.0"))
-	float CapsuleHalfHeight = 200.f;
 };
 
 USTRUCT(BlueprintType)
@@ -62,7 +31,7 @@ struct FPalSkillTiming
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Timing", meta=(ClampMin="0.0"))
 	float PrepareTime = 0.0f;
 
-	// 스킬이 실제로 유지되는 시간(지속시간)
+	// 팰이 해당 스킬을 발동시키고 모션을 취하고 있는 시간
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Timing", meta=(ClampMin="0.0"))
 	float Duration = 0.0f;
 
@@ -134,10 +103,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
 	FPalSkillActivation Activation;
 
-	// 실제 적용 범위(피해 판정 범위)
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
-	FPalSkillRange Range;
-
 	// 시간(준비/지속/쿨)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
 	FPalSkillTiming Timing;
@@ -145,4 +110,8 @@ public:
 	// 피해 데이터
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Skill")
 	FPalSkillDamage Damage;
+	
+	// ✅ 실행 클래스: 이 DataAsset을 어떻게 실행할지
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Skill")
+	TSubclassOf<class UPalSkillExecution> ExecutionClass;
 };

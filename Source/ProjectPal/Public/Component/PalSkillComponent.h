@@ -7,7 +7,7 @@
 #include "PalSkillComponent.generated.h"
 
 class UPalSkillDataAsset;
-class APJ_GrassTornado;
+class UPalSkillExecution;
 
 // Delegate : UI 갱신용
 // Active스킬 슬롯(index 0 ~ 2) 변경
@@ -93,6 +93,21 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Pal|Skill")
 	bool CanUseActiveSkill(int32 ActiveIndex) const;
 
+	// ------------------------
+	// 실제 스킬 사용 (DataAsset 기반)
+	// ------------------------
+	// SkillDataAsset만 있으면 해당 스킬을 실행할 수 있다.
+	// (실제 실행 내용은 SkillDataAsset.ExecutionClass(UPalSkillExecution 전략)에 의해 결정)
+	UFUNCTION(BlueprintCallable, Category="Pal|Skill")
+	bool TryUseSkill(const UPalSkillDataAsset* SkillData, AActor* Target);
+
+	// 현재 선택된 슬롯의 스킬을 사용
+	UFUNCTION(BlueprintCallable, Category="Pal|Skill")
+	bool TryUseSelectedSkill(AActor* Target);
+	
+	// ------------------------
+	// Delegate
+	// ------------------------
 	UPROPERTY(BlueprintAssignable, Category="Pal|Skill")
 	FOnPalSkillSlotChanged OnSkillSlotChanged;
 
@@ -123,11 +138,7 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, meta=(AllowPrivateAccess="true"))
 	int32 SelectedActiveSlotIndex = 0;
 	
-	// ===== 테스트용 =====
-public:
-	UFUNCTION(BlueprintCallable, Category="Test|Skill")
-	void Cast_Test_GrassTornado(AActor* Target);
-	
-	UPROPERTY(EditDefaultsOnly, Category="Test|Skill")
-	TSubclassOf<APJ_GrassTornado> GrassTornadoClass;
+	// PrepareTime 이후 Activate까지 기다리는 Execution들이 GC로 사라지지 않도록 보관
+	UPROPERTY()
+	TArray<TObjectPtr<UPalSkillExecution>> PendingExecutions;
 };

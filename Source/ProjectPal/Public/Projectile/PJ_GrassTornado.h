@@ -9,6 +9,7 @@
 class USphereComponent;
 class UParticleSystem;
 class UParticleSystemComponent;
+class UStaticMeshComponent;
 
 UCLASS()
 class PROJECTPAL_API APJ_GrassTornado : public AActor

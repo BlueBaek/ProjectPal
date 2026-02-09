@@ -3,6 +3,7 @@
 
 #include "Projectile/PJ_GrassTornado.h"
 
+#include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"

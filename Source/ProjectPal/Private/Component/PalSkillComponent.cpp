@@ -3,7 +3,8 @@
 
 #include "Component/PalSkillComponent.h"
 
-#include "Projectile/PJ_GrassTornado.h"
+#include "DataAsset/PalSkillDataAsset.h"
+#include "PalSkill/PalSkillExecution.h"
 
 // Sets default values for this component's properties
 UPalSkillComponent::UPalSkillComponent()
@@ -251,69 +252,76 @@ bool UPalSkillComponent::IsValidLearnedIndex(int32 LearnedIndex) const
 	return LearnedIndex >= ActiveSlotCount && Skills.IsValidIndex(LearnedIndex);
 }
 
-void UPalSkillComponent::Cast_Test_GrassTornado(AActor* Target)
+bool UPalSkillComponent::TryUseSkill(const UPalSkillDataAsset* SkillData, AActor* Target)
 {
-	UE_LOG(LogTemp, Warning,
-	       TEXT("[Skill] Cast_Test_GrassTornado ENTER | Owner=%s Target=%s"),
-	       GetOwner() ? *GetOwner()->GetName() : TEXT("NULL"),
-	       Target ? *Target->GetName() : TEXT("NULL"));
-
 	AActor* Caster = GetOwner();
-	if (!Caster || !GetWorld()) return;
-
-	// 테스트 파라미터
-	const float PrepareTime = 1.0f;
-	const float MoveSpeed = 220.f;
-	const float LifeTime = 3.0f; // ✅ 3초 후 자동 소멸
-	const float DamagePerTick = 6.f;
-	const float DamageInterval = 0.2f;
-
-	const FVector CasterLoc = Caster->GetActorLocation();
-	const FRotator CasterRot = Caster->GetActorRotation();
-
-	const FVector Right = CasterRot.RotateVector(FVector::RightVector);
-	const float SideOffset = 120.f;
-
-	const FVector SpawnL = CasterLoc - Right * SideOffset;
-	const FVector SpawnR = CasterLoc + Right * SideOffset;
-
-	FActorSpawnParameters Params;
-	Params.Owner = Caster;
-	Params.Instigator = Cast<APawn>(Caster);
-
-
-	if (!GrassTornadoClass)
+	UWorld* World = GetWorld();
+	if (!Caster || !World || !SkillData)
 	{
-		UE_LOG(LogTemp, Error, TEXT("[Skill] GrassTornadoClass is NULL. Set it in BP/Defaults."));
-		return;
+		return false;
 	}
 
-	APJ_GrassTornado* TornadoL = GetWorld()->SpawnActor<APJ_GrassTornado>(
-		GrassTornadoClass, SpawnL, CasterRot, Params);
+	UPalSkillDataAsset* MutableSkill = const_cast<UPalSkillDataAsset*>(SkillData);
 
-	APJ_GrassTornado* TornadoR = GetWorld()->SpawnActor<APJ_GrassTornado>(
-		GrassTornadoClass, SpawnR, CasterRot, Params);
+	// 쿨타임 체크
+	if (IsSkillOnCooldown(MutableSkill))
+	{
+		return false;
+	}
 
-	if (!TornadoL || !TornadoR) return;
+	if (!SkillData->ExecutionClass)
+	{
+		UE_LOG(LogTemp, Error, TEXT("[Skill] ExecutionClass is null: %s"), *GetNameSafe(SkillData));
+		return false;
+	}
 
-	TornadoL->InitTornado(Caster, Target, MoveSpeed, LifeTime, DamagePerTick, DamageInterval);
-	TornadoR->InitTornado(Caster, Target, MoveSpeed, LifeTime, DamagePerTick, DamageInterval);
+	// 실행 객체 생성 (PrepareTime 동안 GC 방지를 위해 PendingExecutions에 보관)
+	UPalSkillExecution* Exec = NewObject<UPalSkillExecution>(this, SkillData->ExecutionClass);
+	if (!Exec)
+	{
+		return false;
+	}
+	PendingExecutions.Add(Exec);
 
-	UE_LOG(LogTemp, Warning,
-	       TEXT("[Skill] Spawn Tornado | L=%s R=%s"),
-	       TornadoL ? *TornadoL->GetName() : TEXT("NULL"),
-	       TornadoR ? *TornadoR->GetName() : TEXT("NULL"));
+	// Prepare 단계
+	if (!Exec->StartPrepare(this, Caster, Target, SkillData))
+	{
+		PendingExecutions.Remove(Exec);
+		return false;
+	}
 
-	// PrepareTime 후 "발사"(방향 고정, 호밍 없음)
+	// 쿨타임은 "시전 시작" 시점에 적용 (Palworld도 보통 이렇게 동작)
+	StartSkillCooldown(MutableSkill, FMath::Max(0.f, SkillData->Timing.Cooldown));
+
+	const float PrepareTime = FMath::Max(0.f, SkillData->Timing.PrepareTime);
+	if (PrepareTime <= 0.f)
+	{
+		Exec->Activate(this, Caster, Target, SkillData);
+		PendingExecutions.Remove(Exec);
+		return true;
+	}
+
+	// PrepareTime 이후 Activate
 	FTimerHandle Handle;
-	GetWorld()->GetTimerManager().SetTimer(
+	World->GetTimerManager().SetTimer(
 		Handle,
-		FTimerDelegate::CreateWeakLambda(this, [TornadoL, TornadoR]()
+		FTimerDelegate::CreateWeakLambda(this, [this, Exec, Caster, Target, SkillData]()
 		{
-			if (IsValid(TornadoL)) TornadoL->Activate();
-			if (IsValid(TornadoR)) TornadoR->Activate();
+			if (IsValid(Exec))
+			{
+				Exec->Activate(this, Caster, Target, SkillData);
+			}
+			PendingExecutions.Remove(Exec);
 		}),
 		PrepareTime,
 		false
 	);
+
+	return true;
+}
+
+bool UPalSkillComponent::TryUseSelectedSkill(AActor* Target)
+{
+	UPalSkillDataAsset* Skill = GetSkillAt(SelectedActiveSlotIndex);
+	return TryUseSkill(Skill, Target);
 }
