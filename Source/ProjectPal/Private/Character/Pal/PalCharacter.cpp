@@ -17,8 +17,17 @@ APalCharacter::APalCharacter()
 	PalStatComponent = CreateDefaultSubobject<UPalStatComponent>(TEXT("PalStatComponent"));
 	PalSkillComponent = CreateDefaultSubobject<UPalSkillComponent>(TEXT("PalSkillComponent"));
 
+	// 자연스러운 회전
+	// 컨트롤러의 회전값이 폰에 즉각 반영되지 않도록 꺼줍니다.
+	bUseControllerRotationYaw = false;
+	// 가속 방향(이동 방향)으로 몸을 돌리도록 설정
+	GetCharacterMovement()->bOrientRotationToMovement = true;
+	// 회전 속도를 제한
+	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 200.f);
+	
 	// 팰의 기본 움직임 속도 제한
-	MoveState = EPalMoveState::Walk;
+	MoveState = EPalMoveState::Wandering;
+	ApplyMoveSpeed();
 }
 
 // Called when the game starts or when spawned
@@ -89,20 +98,29 @@ void APalCharacter::ApplyMoveSpeed()
 
 	switch (MoveState)
 	{
-	case EPalMoveState::Idle:
-		GetCharacterMovement()->MaxWalkSpeed = 0.f;
-		break;
-
-	case EPalMoveState::Walk:
+	case EPalMoveState::Wandering:
 		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		break;
-
-	case EPalMoveState::Run:
+		
+	case EPalMoveState::Following:
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+		break;
+		
+	case EPalMoveState::RunningAway:
+		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+		break;
+
+	case EPalMoveState::Chasing:
+		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
+		break;
+		
+	case EPalMoveState::StandOff:
+		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		break;
 	}
 }
 
+// 상태 변화
 void APalCharacter::SetMoveState(EPalMoveState NewState)
 {
 	if (MoveState == NewState)
