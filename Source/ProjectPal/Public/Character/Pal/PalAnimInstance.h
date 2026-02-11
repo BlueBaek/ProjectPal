@@ -32,6 +32,10 @@ protected:
 	UPROPERTY(Transient)
 	UCharacterMovementComponent* MoveComponent = nullptr;
 	
+	// 스킬 사용을 위함. Notify 이름은 SkillNotify
+	UFUNCTION()
+	void AnimNotify_SkillFire();
+	
 public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Movement")
 	float Speed;	// 속도

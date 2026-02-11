@@ -6,6 +6,7 @@
 #include "Component/PalSkillComponent.h"
 #include "Component/PalStatComponent.h"
 #include "Data/PalData.h"
+#include "DataAsset/PalSkillDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
@@ -71,7 +72,6 @@ void APalCharacter::BeginPlay()
 		}
 	}
 	
-	
 	// === 팰 정보 종합 로그 ===
 	UE_LOG(LogTemp, Warning,
 		TEXT("[Pal] %s (%s) | Type:%s | HP:%d ATK:%d DEF:%d"),
@@ -82,6 +82,20 @@ void APalCharacter::BeginPlay()
 		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetAttack()) : -1,
 		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetDefense()) : -1
 	);
+	
+	// 보유 스킬 추가
+	if (UPalSkillComponent* SkillComp = FindComponentByClass<UPalSkillComponent>())
+	{
+		// InitialSkills의 스킬들을 보유 목록에 추가
+		for (UPalSkillDataAsset* SkillDA : InitialSkills)
+		{
+			if (IsValid(SkillDA))
+			{
+				SkillComp->LearnSkill(SkillDA);
+			}
+		}
+	}
+	
 }
 
 // Called every frame

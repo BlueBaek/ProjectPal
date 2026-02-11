@@ -3,6 +3,7 @@
 
 #include "Component/PalSkillComponent.h"
 
+#include "Character/Pal/PalCharacter.h"
 #include "DataAsset/PalSkillDataAsset.h"
 #include "PalSkill/PalSkillExecution.h"
 
@@ -252,11 +253,16 @@ bool UPalSkillComponent::IsValidLearnedIndex(int32 LearnedIndex) const
 	return LearnedIndex >= ActiveSlotCount && Skills.IsValidIndex(LearnedIndex);
 }
 
+APalCharacter* UPalSkillComponent::GetPalOwner() const
+{
+	return Cast<APalCharacter>(GetOwner());
+}
+
 bool UPalSkillComponent::TryUseSkill(const UPalSkillDataAsset* SkillData, AActor* Target)
 {
-	AActor* Caster = GetOwner();
+	APalCharacter* Pal = GetPalOwner();
 	UWorld* World = GetWorld();
-	if (!Caster || !World || !SkillData)
+	if (!Pal || !World || !SkillData)
 	{
 		return false;
 	}
@@ -281,36 +287,55 @@ bool UPalSkillComponent::TryUseSkill(const UPalSkillDataAsset* SkillData, AActor
 	{
 		return false;
 	}
+	
+	// 타이머로 지연 실행될 수 있으므로 GC 방지
 	PendingExecutions.Add(Exec);
 
 	// Prepare 단계
-	if (!Exec->StartPrepare(this, Caster, Target, SkillData))
+	if (!Exec->StartPrepare(Pal, Target, SkillData))
 	{
 		PendingExecutions.Remove(Exec);
 		return false;
 	}
 
-	// 쿨타임은 "시전 시작" 시점에 적용 (Palworld도 보통 이렇게 동작)
+	// 쿨타임은 "시전 시작" 시점에 적용
 	StartSkillCooldown(MutableSkill, FMath::Max(0.f, SkillData->Timing.Cooldown));
 
 	const float PrepareTime = FMath::Max(0.f, SkillData->Timing.PrepareTime);
 	if (PrepareTime <= 0.f)
 	{
-		Exec->Activate(this, Caster, Target, SkillData);
+		// Start(Action) 단계에 들어갈 것이므로 Notify 전달 대상 등록
+		SetActiveExecution(Exec);
+		Exec->Activate();
+
 		PendingExecutions.Remove(Exec);
 		return true;
 	}
 
-	// PrepareTime 이후 Activate
-	FTimerHandle Handle;
-	World->GetTimerManager().SetTimer(
-		Handle,
-		FTimerDelegate::CreateWeakLambda(this, [this, Exec, Caster, Target, SkillData]()
+	// PrepareTime 후 Activate 예약
+	FTimerHandle TempHandle;
+	Pal->GetWorld()->GetTimerManager().SetTimer(
+		TempHandle,
+		FTimerDelegate::CreateWeakLambda(this, [this, Exec]()
 		{
-			if (IsValid(Exec))
+			// 타이머 시점엔 Component/Exec가 이미 파괴될 수도 있으니 안전 체크
+			if (!IsValid(this) || !IsValid(Exec))
 			{
-				Exec->Activate(this, Caster, Target, SkillData);
+				return;
 			}
+
+			// Start(Action) 단계 시작: Notify(SkillFire)가 들어올 Execution을 등록
+			SetActiveExecution(Exec);
+
+			Exec->Activate();
+
+			// Finish()에서 ClearActiveExecution(this)를 해도 되지만,
+			// 일단 "Activate 호출 직후 해제"하면 SkillFire가 못 올 수도 있음.
+			// ✅ 그래서 Clear는 "Execution::Finish()"에서 해제하는 방식이 더 안전하다.
+			//
+			// 여기서는 Execution이 Finish에서 ClearActiveExecution 호출한다고 가정하고,
+			// 여기서는 건드리지 않는다.
+
 			PendingExecutions.Remove(Exec);
 		}),
 		PrepareTime,
@@ -324,4 +349,88 @@ bool UPalSkillComponent::TryUseSelectedSkill(AActor* Target)
 {
 	UPalSkillDataAsset* Skill = GetSkillAt(SelectedActiveSlotIndex);
 	return TryUseSkill(Skill, Target);
+}
+
+// 사용 가능한 스킬 랜덤으로 Pick
+int32 UPalSkillComponent::PickRandomUsableActiveSlot() const
+{
+	// 사용 가능한 스킬을 저장할 Array
+	TArray<int32> Candidates;
+	// 데이터를 담을 공간을 미리 확보 (3칸)
+	Candidates.Reserve(ActiveSlotCount);
+
+	for (int32 i = 0; i < ActiveSlotCount; ++i)
+	{
+		// 슬롯 범위 + 스킬 존재 + 쿨타임 아님
+		if (CanUseActiveSkill(i))
+		{
+			Candidates.Add(i);
+		}
+	}
+
+	// 사용 가능한 스킬이 없음
+	if (Candidates.Num() == 0)
+	{
+		// 유효하지 않은 Index를 반환
+		return INDEX_NONE;
+	}
+	
+	// 목록중 랜덤으로 하나 뽑아서 return
+	return Candidates[FMath::RandHelper(Candidates.Num())];;
+}
+
+// 유효성 판단
+bool UPalSkillComponent::TryUseRandomActiveSkill(AActor* Target, int32& OutUsedSlotIndex)
+{
+	// INDEX_NONE == -1 (유효하지 않은 INDEX)
+	OutUsedSlotIndex = INDEX_NONE;
+
+	// 랜덤 선택으로 선택된 슬롯
+	const int32 PickedSlot = PickRandomUsableActiveSlot();
+	if (PickedSlot == INDEX_NONE)
+	{
+		// 값이 없으면 return
+		return false;
+	}
+
+	// 선택된 슬롯의 스킬을 가져옴 (SkillDataAsset을 가져옴)
+	UPalSkillDataAsset* Skill = GetSkillAt(PickedSlot);
+	if (!Skill)
+	{
+		// 비어 있으면 return
+		return false;
+	}
+
+	// 원하면 "현재 선택 슬롯"도 같이 갱신해서
+	// 다른 시스템(UI/디버그/BT)에서 추적 가능하게 할 수 있음
+	SelectActiveSlot(PickedSlot);	// UI 갱신용
+	OutUsedSlotIndex = PickedSlot;
+
+	// 스킬 사용, 쿨타임 적용
+	return TryUseSkill(Skill, Target);	
+}
+
+void UPalSkillComponent::HandleSkillFireNotify()
+{
+	// 실행중인 Execution이 있다면
+	if (ActiveExecution)
+	{
+		// 스킬 발사 로직 실행
+		ActiveExecution->OnSkillFire();
+	}
+}
+
+void UPalSkillComponent::SetActiveExecution(class UPalSkillExecution* InExec)
+{
+	// Activate() 단계에서 Execution이 자기 자신을 등록함
+	ActiveExecution = InExec;
+}
+
+void UPalSkillComponent::ClearActiveExecution(class UPalSkillExecution* InExec)
+{
+	// 스킬 종료 시 자기 자신만 해제
+	if (ActiveExecution == InExec)
+	{
+		ActiveExecution = nullptr;
+	}
 }

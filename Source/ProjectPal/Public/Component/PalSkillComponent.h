@@ -8,6 +8,7 @@
 
 class UPalSkillDataAsset;
 class UPalSkillExecution;
+class APalCharacter;
 
 // Delegate : UI 갱신용
 // Active스킬 슬롯(index 0 ~ 2) 변경
@@ -106,6 +107,22 @@ public:
 	bool TryUseSelectedSkill(AActor* Target);
 	
 	// ------------------------
+	// 랜덤 사용 (쿨타임 끝난 것 중) - AI스킬 사용을 위함
+	// ------------------------
+	UFUNCTION(BlueprintCallable, Category="Pal|Skill")
+	int32 PickRandomUsableActiveSlot() const;
+
+	UFUNCTION(BlueprintCallable, Category="Pal|Skill")
+	bool TryUseRandomActiveSkill(AActor* Target, int32& OutUsedSlotIndex);
+	
+	// SkillFire(Notify)가 발생했을 때 호출됨
+	void HandleSkillFireNotify();
+	
+	// Execution이 자신을 등록/해제할 수 있게
+	void SetActiveExecution(class UPalSkillExecution* InExec);
+	void ClearActiveExecution(class UPalSkillExecution* InExec);
+	
+	// ------------------------
 	// Delegate
 	// ------------------------
 	UPROPERTY(BlueprintAssignable, Category="Pal|Skill")
@@ -141,4 +158,11 @@ private:
 	// PrepareTime 이후 Activate까지 기다리는 Execution들이 GC로 사라지지 않도록 보관
 	UPROPERTY()
 	TArray<TObjectPtr<UPalSkillExecution>> PendingExecutions;
+	
+	// SkillExecution
+	UPROPERTY()
+	TObjectPtr<UPalSkillExecution> ActiveExecution = nullptr;
+	
+	// 내부 유틸: Owner를 PalCharacter로
+	APalCharacter* GetPalOwner() const;
 };

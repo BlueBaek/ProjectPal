@@ -87,7 +87,7 @@ void APJ_GrassTornado::InitTornado(AActor* InCaster, AActor* InTargetActor, floa
 	TargetActor = InTargetActor;
 
 	MoveSpeed = InMoveSpeed;
-	LifeTime = InLifeTime; // ✅ 보통 3초 고정으로 넣을 것
+	LifeTime = 5; //
 	DamagePerTick = InDamagePerTick;
 	DamageInterval = InDamageInterval;
 }

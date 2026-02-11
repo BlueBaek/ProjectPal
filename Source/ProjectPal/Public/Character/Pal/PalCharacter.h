@@ -10,6 +10,7 @@ class UPalStatComponent;
 class UPalSkillComponent;
 enum class EPalType : uint8;
 class UDataTable;
+class UAnimMontage;
 
 // 포획 가능 구분용
 UENUM(BlueprintType)
@@ -107,21 +108,58 @@ protected:
 	// State에 따라 MoveSpeed 적용
 	void ApplyMoveSpeed();
 
+	// 현재 타겟 변수
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<AActor> CurrentTargetActor = nullptr;
+	
 public:
 	// 이동 상태 변경 인터페이스
 	void SetMoveState(EPalMoveState NewState);
 
 	// 타겟을 발견했을 때 재생할 몽타주(팰마다 다르게 BP에서 지정)
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
-	TObjectPtr<class UAnimMontage> AggroMontage;
-
+	TObjectPtr<UAnimMontage> Encount;
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
-	UAnimMontage* GetAggroMontage() const { return AggroMontage; }
-	
+	UAnimMontage* GetAggroMontage() const { return Encount; }
+
 	// Enum을 Blueprint에서 사용하기 위함
 	UPROPERTY(EditAnywhere)
 	EPalMoveState PalMoveState;
 
+	// 스킬 초기화
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Pal|Skill")
+	TArray<TObjectPtr<class UPalSkillDataAsset>> InitialSkills;
+	
+	// 스킬 사용 시 사용할 몽타주
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
+	TObjectPtr<UAnimMontage> SkillStart;
+	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
+	UAnimMontage* GetSkillStartMontage() const { return SkillStart; }
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
+	TObjectPtr<UAnimMontage> SkillStartLoop;
+	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
+	UAnimMontage* GetSkillStartLoopMontage() const { return SkillStartLoop; }
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
+	TObjectPtr<UAnimMontage> SkillAction;
+	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
+	UAnimMontage* GetSkillActionMontage() const { return SkillAction; }
+	
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
+	TObjectPtr<UAnimMontage> SkillActionLoop;
+	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
+	UAnimMontage* GetSkillActionLoopMontage() const { return SkillActionLoop; }
+	
+	// 현재 타겟 Setter
+	UFUNCTION(BlueprintCallable, Category="Combat")
+	void SetCurrentTarget(AActor* NewTarget) { CurrentTargetActor = NewTarget; }
+
+	// 현재 타겟 Getter
+	UFUNCTION(BlueprintCallable, Category="Combat")
+	AActor* GetCurrentTarget() const { return CurrentTargetActor; }
+	
+	
 private:
 	// 데이터 테이블로부터 팰 정보 Load
 	bool LoadPalData();

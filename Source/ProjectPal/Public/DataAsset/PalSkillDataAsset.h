@@ -54,8 +54,8 @@ struct FPalSkillDamage
 	float DamageInterval = 0.0f;
 
 	// (옵션) 데미지 타입
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
-	TSubclassOf<UDamageType> DamageTypeClass;
+	// UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Damage")
+	// TSubclassOf<UDamageType> DamageTypeClass;
 	
 };
 
@@ -63,10 +63,6 @@ USTRUCT(BlueprintType)
 struct FPalSkillActivation
 {
 	GENERATED_BODY()
-
-	// 타겟 종류
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Activation")
-	EPalSkillTargetType TargetType = EPalSkillTargetType::Enemy;
 
 	// “지정한 적과 거리만큼 이동해야 발동”을 위한 최소 이동 거리(0이면 제한 없음)
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Activation", meta=(ClampMin="0.0"))

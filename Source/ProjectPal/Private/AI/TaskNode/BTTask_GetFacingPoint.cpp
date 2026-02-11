@@ -33,6 +33,11 @@ void UBTTask_GetFacingPoint::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* 
 	}
 
 	UBlackboardComponent* BBComp = OwnerComp.GetBlackboardComponent();
+	if (!BBComp)
+	{
+		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+		return;
+	}
 	APawn* ControlledPawn = AIController->GetPawn();
 
 	// 1. 타겟 위치 가져오기 (액터 혹은 좌표)
@@ -48,11 +53,11 @@ void UBTTask_GetFacingPoint::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* 
 		TargetLocation = BBComp->GetValueAsVector(TargetKey.SelectedKeyName);
 	}
 
-	if (TargetLocation.IsZero())
-	{
-		FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
-		return;
-	}
+	// if (TargetLocation.IsZero())
+	// {
+	// 	FinishLatentTask(OwnerComp, EBTNodeResult::Failed);
+	// 	return;
+	// }
 
 	// 2. 방향 계산 및 회전값 도출
 	FVector CurrentLocation = ControlledPawn->GetActorLocation();
@@ -67,7 +72,8 @@ void UBTTask_GetFacingPoint::TickTask(UBehaviorTreeComponent& OwnerComp, uint8* 
 	ControlledPawn->SetActorRotation(NewRotation);
 
 	// 4. 완료 조건 체크
-	float AngleRemaining = FMath::Abs(NewRotation.Yaw - TargetRotation.Yaw);
+	// float AngleRemaining = FMath::Abs(NewRotation.Yaw - TargetRotation.Yaw);
+	float AngleRemaining = FMath::Abs(FMath::FindDeltaAngleDegrees(NewRotation.Yaw, TargetRotation.Yaw));
 	if (AngleRemaining <= Precision)
 	{
 		FinishLatentTask(OwnerComp, EBTNodeResult::Succeeded);

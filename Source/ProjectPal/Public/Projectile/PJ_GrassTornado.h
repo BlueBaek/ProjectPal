@@ -84,7 +84,7 @@ private:
 
 	// 파라미터
 	float MoveSpeed = 200.f;
-	float LifeTime = 3.f;
+	float LifeTime = 5.f;
 	float DamagePerTick = 5.f;
 	float DamageInterval = 0.2f;
 

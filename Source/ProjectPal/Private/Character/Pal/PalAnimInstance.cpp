@@ -3,6 +3,7 @@
 
 #include "Character/Pal/PalAnimInstance.h"
 
+#include "Component/PalSkillComponent.h"
 #include "GameFramework/Character.h"
 #include "GameFramework/CharacterMovementComponent.h"
 
@@ -57,4 +58,17 @@ void UPalAnimInstance::NativeUpdateAnimation(float DeltaSeconds)
 	}
 	
 	bIsMoving = Speed > 3.f;
+}
+
+void UPalAnimInstance::AnimNotify_SkillFire()
+{
+	AActor* Owner = GetOwningActor();
+	if (!Owner) return;
+
+	// SkillComponent 탐색
+	if (UPalSkillComponent* SkillComp = Owner->FindComponentByClass<UPalSkillComponent>())
+	{
+		// 
+		SkillComp->HandleSkillFireNotify();
+	}
 }
