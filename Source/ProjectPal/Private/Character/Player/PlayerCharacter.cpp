@@ -13,6 +13,7 @@
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
 #include "Component/PlayerStatComponent.h"
+#include "Projectile/PJ_PalSphere.h"
 
 // Sets default values
 APlayerCharacter::APlayerCharacter()
@@ -331,7 +332,6 @@ void APlayerCharacter::SetAiming(bool isAiming)
 void APlayerCharacter::Attack(bool isAttacking)
 {
 	bIsAttacking = isAttacking;
-	// 공격 중엔 시점 고정
 
 	// bUseControllerRotationYaw = isAttacking;
 	// GetCharacterMovement()->bOrientRotationToMovement = !isAttacking;
@@ -473,5 +473,223 @@ void APlayerCharacter::ApplyUnarmedAnimLayer()
 		CurrentLinkedLayerClass = Desired;
 
 		UE_LOG(LogTemp, Warning, TEXT("[AnimLayer] Linked: %s"), *GetNameSafe(Desired));
+	}
+}
+
+void APlayerCharacter::PalSphereHold()
+{
+	// 이미 다른 단계면 무시
+	if (PalSphereState != EPalSphereThrowState::None)
+		return;
+
+	// 몽타주 없으면 실행 불가
+	if (!PalSphereMontage)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PalSphere] PalSphereMontage is null. Set it in BP/Defaults."));
+		return;
+	}
+
+	bPalSphereCancelRequested = false;
+
+	// Q 누르기 전 조준 상태 저장 (원복용)
+	// (프로젝트에서 GetIsAiming()이 없으면 bIsAiming 접근으로 바꿔)
+	bAimWasActiveBeforePalSphere = GetIsAiming();
+
+	// Q 홀드 동안은 "우클릭 누르고 있는 것처럼" 조준 강제 ON
+	SetAiming(true);
+
+	PalSphereState = EPalSphereThrowState::Holding;
+
+	// 몽타주 재생 (Hold_Start부터 시작)
+	PlayAnimMontage(PalSphereMontage);
+	
+
+	// 손에 프리뷰 메시 붙이기/보이기
+	ShowHeldSpherePreview(true);
+}
+
+void APlayerCharacter::PalSphereThrow()
+{
+	// Holding 상태에서만 릴리즈가 의미 있음
+	if (PalSphereState != EPalSphereThrowState::Holding)
+		return;
+
+	// RMB로 이미 취소 요청이 들어온 상태면 그냥 종료
+	if (bPalSphereCancelRequested)
+	{
+		EndPalSphereHold(/*bRestoreAim=*/true);
+		return;
+	}
+
+	if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+	{
+		Anim->OnMontageEnded.RemoveDynamic(this, &APlayerCharacter::OnPalSphereMontageEnded);
+		Anim->OnMontageEnded.AddDynamic(this, &APlayerCharacter::OnPalSphereMontageEnded);
+
+		Anim->OnMontageBlendingOut.RemoveDynamic(this, &APlayerCharacter::OnPalSphereMontageBlendingOut);
+		Anim->OnMontageBlendingOut.AddDynamic(this, &APlayerCharacter::OnPalSphereMontageBlendingOut);
+	}
+	
+	// ✅ Throw로 들어가는 순간 조준 종료
+	SetAiming(false);
+	
+	// 던지기 단계로 전환
+	PalSphereState = EPalSphereThrowState::Throwing;
+
+	// Throw 섹션으로 점프 (던지기 모션 시작)
+	JumpToPalSphereSection(SECTION_Throw);
+}
+
+void APlayerCharacter::CancelPalSphereThrow()
+{
+	// 요구사항: "Q 홀드 중 우클릭을 누르면 조준모드 종료 + 취소"
+	if (PalSphereState != EPalSphereThrowState::Holding)
+	{
+		// 홀드가 아닐 땐 여기서 아무 것도 하지 않음(기존 RMB 토글은 Controller에서 처리)
+		return;
+	}
+
+	bPalSphereCancelRequested = true;
+
+	// 즉시 원복 (조준은 Q 이전 상태로 복구)
+	EndPalSphereHold(/*bRestoreAim=*/true);
+}
+
+void APlayerCharacter::AnimNotify_PalSphereThrow()
+{
+	ShowHeldSpherePreview(false);
+
+	if (!APJ_PalSphereClass)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PalSphere] ProjectileClass is null. Set in BP/Defaults."));
+		return;
+	}
+
+	const FVector SpawnLoc = GetMesh()->GetSocketLocation(PalSphereHandSocketName);
+	const FRotator ControlRot = GetControlRotation();
+
+	FActorSpawnParameters Params;
+	Params.Owner = this;
+	Params.Instigator = GetInstigator();
+
+	APJ_PalSphere* Sphere = GetWorld()->SpawnActor<APJ_PalSphere>(
+		APJ_PalSphereClass,
+		SpawnLoc,
+		ControlRot,
+		Params
+	);
+
+	if (!Sphere) return;
+
+	Sphere->SetOwnerIgnoreCollision(this);
+
+	// 카메라 방향으로 던지되 살짝 위로
+	const FVector Dir = ControlRot.Vector();
+	FVector Velocity = Dir * PalSphereThrowSpeed;
+	Velocity.Z += PalSphereThrowUpBoost;
+
+	Sphere->InitVelocity(Velocity);
+}
+
+// 몽타주가 종료될 때
+void APlayerCharacter::OnPalSphereMontageEnded(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != PalSphereMontage) return;
+
+	// Throwing 도중 끊기거나(Interrupted) 블렌드아웃 시작이면
+	// "다음 투척 가능"하도록 상태를 풀어준다.
+	ShowHeldSpherePreview(false);
+	bPalSphereCancelRequested = false;
+	PalSphereState = EPalSphereThrowState::None;
+}
+// 중간의 몽타주가 끊길 때
+void APlayerCharacter::OnPalSphereMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted)
+{
+	if (Montage != PalSphereMontage) return;
+
+	ShowHeldSpherePreview(false);
+	bPalSphereCancelRequested = false;
+	PalSphereState = EPalSphereThrowState::None;
+}
+
+void APlayerCharacter::EndPalSphereHold(bool bRestoreAim)
+{
+	// 프리뷰 제거
+	ShowHeldSpherePreview(false);
+
+	// 몽타주 정리
+	if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+	{
+		// Throwing 중엔 여기서 끊지 않는 걸 권장하지만,
+		// Cancel은 Holding에서만 호출되니까 안전.
+		if (PalSphereMontage && Anim->Montage_IsPlaying(PalSphereMontage))
+		{
+			// 빠르게 끊어줘야 "취소" 느낌이 좋음
+			Anim->Montage_Stop(0.15f, PalSphereMontage);
+		}
+	}
+
+	if (bRestoreAim)
+	{
+		SetAiming(bAimWasActiveBeforePalSphere);
+	}
+
+	bPalSphereCancelRequested = false;
+	PalSphereState = EPalSphereThrowState::None;
+}
+
+void APlayerCharacter::JumpToPalSphereSection(const FName& SectionName)
+{
+	if (!PalSphereMontage)
+		return;
+
+	if (UAnimInstance* Anim = GetMesh() ? GetMesh()->GetAnimInstance() : nullptr)
+	{
+		// 몽타주가 재생 중이면 섹션 점프
+		if (Anim->Montage_IsPlaying(PalSphereMontage))
+		{
+			Anim->Montage_JumpToSection(SectionName, PalSphereMontage);
+		}
+		else
+		{
+			// 혹시 재생이 안 되어 있으면 재생 후 섹션 점프
+			PlayAnimMontage(PalSphereMontage);
+			Anim->Montage_JumpToSection(SectionName, PalSphereMontage);
+		}
+	}
+}
+
+// 손 프리뷰 생성/표시 함수
+void APlayerCharacter::ShowHeldSpherePreview(bool bShow)
+{
+	if (bShow)
+	{
+		if (!HeldPalSphereMesh)
+		{
+			HeldPalSphereMesh = NewObject<USkeletalMeshComponent>(this, TEXT("HeldPalSphereMesh"));
+			HeldPalSphereMesh->RegisterComponent();
+			HeldPalSphereMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+			HeldPalSphereMesh->SetCastShadow(true);
+
+			if (PalSphereAsset)
+			{
+				HeldPalSphereMesh->SetSkeletalMesh(PalSphereAsset);
+			}
+
+			HeldPalSphereMesh->AttachToComponent(
+				GetMesh(),
+				FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+				PalSphereHandSocketName
+			);
+		}
+
+		HeldPalSphereMesh->SetVisibility(true);
+	}
+	else
+	{
+		if (HeldPalSphereMesh)
+		{
+			HeldPalSphereMesh->SetVisibility(false);
+		}
 	}
 }

@@ -69,6 +69,14 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* AttackAction;
 	
+	// 포획
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* CatchAction;
+	
+	// 소환
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* SpawnAction;
+	
 	// 현재 적용 중인 “상태 IMC”를 추적해서, 이것만 안전하게 교체
 	UPROPERTY(Transient)	// 디스크 저장 제외(불필요한 데이터 낭비를 막음)
 	TObjectPtr<UInputMappingContext> CurrentStateIMC = nullptr;
@@ -90,6 +98,9 @@ protected:
 	void Input_StartAttack();
 	void Input_StopAttack();
 	void Input_EquipChange(const FInputActionValue& Value);
+	void Input_PalSphereHold();
+	void Input_PalSphereThrow();
+	void Input_PalSphereCancel();
 	
 private:
 	// 휠 디바운스용

@@ -114,16 +114,24 @@ void AMyPlayerController::SetupInputComponent()
 		                                   &AMyPlayerController::Input_StartAim);
 		EnhancedInputComponent->BindAction(AimAction, ETriggerEvent::Completed, this,
 		                                   &AMyPlayerController::Input_StopAim);
-		
+
 		// Wheel 장비 변경
 		EnhancedInputComponent->BindAction(EquipChangeAction, ETriggerEvent::Triggered, this,
-									   &AMyPlayerController::Input_EquipChange);
+		                                   &AMyPlayerController::Input_EquipChange);
 
 		// Attack
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Started, this,
 		                                   &AMyPlayerController::Input_StartAttack);
 		EnhancedInputComponent->BindAction(AttackAction, ETriggerEvent::Completed, this,
 		                                   &AMyPlayerController::Input_StopAttack);
+
+		// Catch
+		EnhancedInputComponent->BindAction(CatchAction, ETriggerEvent::Started, this,
+		                                   &AMyPlayerController::Input_PalSphereHold);
+		EnhancedInputComponent->BindAction(CatchAction, ETriggerEvent::Completed, this,
+		                                   &AMyPlayerController::Input_PalSphereThrow);
+		EnhancedInputComponent->BindAction(CatchAction, ETriggerEvent::Canceled, this,
+		                                   &AMyPlayerController::Input_PalSphereCancel);
 	}
 }
 
@@ -187,6 +195,11 @@ void AMyPlayerController::Input_StartAim()
 {
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
+		if (ControlledChar->IsPalSphereHolding()) // 아래 2)에서 추가할 Getter
+		{
+			ControlledChar->CancelPalSphereThrow(); // 아래 2)에서 추가할 함수
+			return;
+		}
 		ControlledChar->SetAiming(true);
 	}
 	GEngine->AddOnScreenDebugMessage(-1, 1.0f, FColor::Green, TEXT("StartAim"));
@@ -208,7 +221,7 @@ void AMyPlayerController::Input_EquipChange(const FInputActionValue& Value)
 	{
 		return;
 	}
-	
+
 	// 디바운스: 짧은 시간 내 재호출 무시
 	const double Now = GetWorld() ? GetWorld()->GetTimeSeconds() : 0.0;
 	if ((Now - LastEquipWheelTimeSec) < EquipWheelDebounceSec)
@@ -243,5 +256,29 @@ void AMyPlayerController::Input_StopAttack()
 		{
 			Combat->ProcessAttack(false);
 		}
+	}
+}
+
+void AMyPlayerController::Input_PalSphereHold()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->PalSphereHold();
+	}
+}
+
+void AMyPlayerController::Input_PalSphereThrow()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->PalSphereThrow();
+	}
+}
+
+void AMyPlayerController::Input_PalSphereCancel()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		ControlledChar->CancelPalSphereThrow();
 	}
 }

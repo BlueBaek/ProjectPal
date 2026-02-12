@@ -3,12 +3,15 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "PlayerCharacter.h"
 #include "Animation/AnimInstance.h"
 #include "PlayerAnimInstance.generated.h"
 
 /**
  * 
  */
+enum class EPalSphereThrowState : uint8;
+
 UCLASS()
 class PROJECTPAL_API UPlayerAnimInstance : public UAnimInstance
 {

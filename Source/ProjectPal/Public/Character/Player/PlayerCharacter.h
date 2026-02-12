@@ -27,6 +27,15 @@ enum class EMyActionState : uint8
 	// Dead			UMETA(DisplayName="Dead"),
 };
 
+// 팰스피어 투척 상태
+UENUM(BlueprintType)
+enum class EPalSphereThrowState : uint8
+{
+	None,
+	Holding,     // Q 누르는 중 (조준 강제 ON, 프리뷰/홀드몽타주)
+	Throwing     // 던지는 중 (Throw 섹션 재생~Notify 발사까지)
+};
+
 UCLASS()
 class PROJECTPAL_API APlayerCharacter : public ACharacter
 {
@@ -52,7 +61,6 @@ public:
 	void SetActionState(EMyActionState NewState);
 
 private:
-	
 	// 카메라 붐 스틱
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Camera", meta=(AllowPrivateAccess="true"))
 	USpringArmComponent* CCameraArm;
@@ -160,7 +168,7 @@ private:
 
 	UPROPERTY(BlueprintAssignable, Category="Item|Equip")
 	FOnEquipSlotChanged OnEquipSlotChanged;
-
+	
 public:
 	// 바인딩할 함수
 	void Move(const FInputActionValue& Value); // 기본 움직임(Jogging)
@@ -194,4 +202,79 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Equip|Slots")
 	void SetWeaponToSlot(int32 SlotIndex, UWeaponDataAsset* WeaponData);
+	
+public:
+	// 팰스피어 관련 변수
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Capture", meta=(AllowPrivateAccess="true"))
+	EPalSphereThrowState PalSphereState = EPalSphereThrowState::None;
+
+	EPalSphereThrowState getPalSphereState() {return PalSphereState;}
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Capture", meta=(AllowPrivateAccess="true"))
+	bool bAimWasActiveBeforePalSphere = false;
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Capture", meta=(AllowPrivateAccess="true"))
+	bool bPalSphereCancelRequested = false;
+	
+	// 몽타주(블루프린트에서 지정)
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Capture")
+	UAnimMontage* PalSphereMontage = nullptr;
+	
+	// 섹션 이름
+	inline static const FName SECTION_Hold = TEXT("Hold");
+	inline static const FName SECTION_Throw = TEXT("Throw");
+	
+	// Q Started
+	UFUNCTION(BlueprintCallable, Category="Capture")
+	void PalSphereHold();
+	// Q Completed
+	UFUNCTION(BlueprintCallable, Category="Capture")
+	void PalSphereThrow();
+	// RMB(=AimAction Started)로 캔슬
+	UFUNCTION(BlueprintCallable, Category="Capture")
+	void CancelPalSphereThrow();
+	// 컨트롤러가 체크할 용도
+	UFUNCTION(BlueprintPure, Category="Capture")
+	bool IsPalSphereHolding() const { return PalSphereState == EPalSphereThrowState::Holding; }
+	
+	// Notify에서 호출(던지는 타이밍)
+	UFUNCTION(BlueprintCallable, Category="Capture")
+	void AnimNotify_PalSphereThrow();
+	
+	UFUNCTION()
+	void OnPalSphereMontageEnded(UAnimMontage* Montage, bool bInterrupted);
+
+	UFUNCTION()
+	void OnPalSphereMontageBlendingOut(UAnimMontage* Montage, bool bInterrupted);
+
+private:
+	void EndPalSphereHold(bool bRestoreAim);
+	void JumpToPalSphereSection(const FName& SectionName);
+	
+	// ===== PalSphere관련 변수/함수 추가 =====
+protected:
+	
+	UPROPERTY(EditDefaultsOnly, Category="Capture|PalSphere")
+	TSubclassOf<class APJ_PalSphere> APJ_PalSphereClass;
+
+	UPROPERTY(EditDefaultsOnly, Category="Capture|PalSphere")
+	USkeletalMesh* PalSphereAsset;
+
+	// 소켓 이름 : Socket_Weapon_R
+	UPROPERTY(EditDefaultsOnly, Category="Capture|PalSphere")
+	FName PalSphereHandSocketName = TEXT("Socket_Weapon_R");
+
+	// 던진 물체 속도
+	UPROPERTY(EditDefaultsOnly, Category="Capture|PalSphere")
+	float PalSphereThrowSpeed = 1600.f;
+
+	// 곡선형태로 던질 때 위로 휘는 정도
+	UPROPERTY(EditDefaultsOnly, Category="Capture|PalSphere")
+	float PalSphereThrowUpBoost = 250.f;
+
+	// “손에 쥐고 있는” 프리뷰
+	UPROPERTY()
+	USkeletalMeshComponent* HeldPalSphereMesh = nullptr;
+	
+	void ShowHeldSpherePreview(bool bShow);
 };
