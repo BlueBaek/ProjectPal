@@ -77,6 +77,12 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
 	UInputAction* SpawnAction;
 	
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* PrevPalSlotAction; // 1
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Input")
+	UInputAction* NextPalSlotAction; // 3
+	
 	// 현재 적용 중인 “상태 IMC”를 추적해서, 이것만 안전하게 교체
 	UPROPERTY(Transient)	// 디스크 저장 제외(불필요한 데이터 낭비를 막음)
 	TObjectPtr<UInputMappingContext> CurrentStateIMC = nullptr;
@@ -101,6 +107,9 @@ protected:
 	void Input_PalSphereHold();
 	void Input_PalSphereThrow();
 	void Input_PalSphereCancel();
+	void Input_TogglePalSpawn();   // E
+	void Input_PrevPalSlot();    // 1
+	void Input_NextPalSlot();    // 3
 	
 private:
 	// 휠 디바운스용

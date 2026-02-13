@@ -7,7 +7,6 @@
 #include "PJ_PalSphere.generated.h"
 
 class USphereComponent;
-// class UStaticMeshComponent;
 class USkeletalMeshComponent;
 class UProjectileMovementComponent;
 

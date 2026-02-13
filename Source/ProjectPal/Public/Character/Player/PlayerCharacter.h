@@ -14,6 +14,7 @@ class UCombatComponent;
 class UWeaponDataAsset;
 class UAnimInstance;
 class UPlayerStatComponent;
+class UOwnedPalComponent;
 
 // Action 상태를 확인할 Enum class
 UENUM(BlueprintType)
@@ -130,6 +131,10 @@ private:
 	// CombatComponent
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<UCombatComponent> CombatComponent;
+	
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
+	TObjectPtr<UOwnedPalComponent> OwnedPalComponent;
+	
 	// ---- ----
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="State", meta=(AllowPrivateAccess="true"))
 	bool bIsAttacking = false;
@@ -186,6 +191,7 @@ public:
 	FORCEINLINE bool GetIsAttacking() { return bIsAttacking; }	// 조준 상태인지 확인
 	FORCEINLINE UPlayerStatComponent* GetStatComponent() const { return StatComponent; }	// StatComponent
 	FORCEINLINE UCombatComponent* GetCombatComponent() const { return CombatComponent; }	// CombatComponent
+	FORCEINLINE UOwnedPalComponent* GetOwnedPalComponent() const { return OwnedPalComponent; }
 	
 	UFUNCTION(BlueprintCallable, Category="Item|Equip")
 	void SetEquipSlotCount(int32 NewCount);

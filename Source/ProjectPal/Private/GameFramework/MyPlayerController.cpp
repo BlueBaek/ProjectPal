@@ -7,6 +7,7 @@
 #include "EnhancedInputSubsystems.h"
 #include "Character/Player/CombatComponent.h"
 #include "Character/Player/PlayerCharacter.h"
+#include "Component/OwnedPalComponent.h"
 
 AMyPlayerController::AMyPlayerController()
 {
@@ -132,6 +133,18 @@ void AMyPlayerController::SetupInputComponent()
 		                                   &AMyPlayerController::Input_PalSphereThrow);
 		EnhancedInputComponent->BindAction(CatchAction, ETriggerEvent::Canceled, this,
 		                                   &AMyPlayerController::Input_PalSphereCancel);
+		
+		// Spawn (E)
+		EnhancedInputComponent->BindAction(SpawnAction, ETriggerEvent::Started, this,
+										   &AMyPlayerController::Input_TogglePalSpawn);
+
+		// Pal Slot Prev (1)
+		EnhancedInputComponent->BindAction(PrevPalSlotAction, ETriggerEvent::Started, this,
+										   &AMyPlayerController::Input_PrevPalSlot);
+
+		// Pal Slot Next (3)
+		EnhancedInputComponent->BindAction(NextPalSlotAction, ETriggerEvent::Started, this,
+										   &AMyPlayerController::Input_NextPalSlot);
 	}
 }
 
@@ -280,5 +293,44 @@ void AMyPlayerController::Input_PalSphereCancel()
 	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
 	{
 		ControlledChar->CancelPalSphereThrow();
+	}
+}
+
+void AMyPlayerController::Input_TogglePalSpawn()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		// ControlledChar->PalSphereThrow();
+		if (UOwnedPalComponent* OwnedPalComp = ControlledChar->GetOwnedPalComponent())
+		{
+			// 함수 불러오기
+			OwnedPalComp->ToggleSpawn();
+		}
+	}
+}
+
+void AMyPlayerController::Input_PrevPalSlot()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		// ControlledChar->PalSphereThrow();
+		if (UOwnedPalComponent* OwnedPalComp = ControlledChar->GetOwnedPalComponent())
+		{
+			// 함수 불러오기
+			OwnedPalComp->SelectPrevPal();
+		}
+	}
+}
+
+void AMyPlayerController::Input_NextPalSlot()
+{
+	if (APlayerCharacter* ControlledChar = Cast<APlayerCharacter>(GetPawn()))
+	{
+		// ControlledChar->PalSphereThrow();
+		if (UOwnedPalComponent* OwnedPalComp = ControlledChar->GetOwnedPalComponent())
+		{
+			// 함수 불러오기
+			OwnedPalComp->SelectNextPal();
+		}
 	}
 }

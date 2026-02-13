@@ -159,6 +159,13 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Combat")
 	AActor* GetCurrentTarget() const { return CurrentTargetActor; }
 	
+	// PalGroup Set
+	UFUNCTION(BlueprintCallable, Category="Pal")
+	EPalGroup GetPalGroup() const { return PalGroup; }
+
+	// PalGroup Set
+	UFUNCTION(BlueprintCallable, Category="Pal")
+	void SetPalGroup(EPalGroup NewGroup) { PalGroup = NewGroup; }
 	
 private:
 	// 데이터 테이블로부터 팰 정보 Load

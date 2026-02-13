@@ -12,6 +12,7 @@
 #include "GameFramework/MyPlayerController.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Animation/AnimInstance.h"
+#include "Component/OwnedPalComponent.h"
 #include "Component/PlayerStatComponent.h"
 #include "Projectile/PJ_PalSphere.h"
 
@@ -68,6 +69,7 @@ APlayerCharacter::APlayerCharacter()
 	// Component 부착
 	CombatComponent = CreateDefaultSubobject<UCombatComponent>(TEXT("CombatComponent"));
 	StatComponent = CreateDefaultSubobject<UPlayerStatComponent>(TEXT("StatComponent"));
+	OwnedPalComponent = CreateDefaultSubobject<UOwnedPalComponent>(TEXT("OwnedPalComponent"));
 }
 
 // Called when the game starts or when spawned
