@@ -33,11 +33,11 @@ protected:
 	float MaxRange = 500.f;
 
 	// 디버그용: 어떤 슬롯을 썼는지 BB에 기록하고 싶으면 설정
-	UPROPERTY(EditAnywhere, Category="Debug")
-	bool bWriteUsedSlotToBlackboard = false;
+	// UPROPERTY(EditAnywhere, Category="Debug")
+	// bool bWriteUsedSlotToBlackboard = false;
 
-	UPROPERTY(EditAnywhere, Category="Debug", meta=(EditCondition="bWriteUsedSlotToBlackboard"))
-	FBlackboardKeySelector UsedSlotIndexKey;
+	// UPROPERTY(EditAnywhere, Category="Debug", meta=(EditCondition="bWriteUsedSlotToBlackboard"))
+	// FBlackboardKeySelector UsedSlotIndexKey;
 
 	virtual EBTNodeResult::Type ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory) override;
 

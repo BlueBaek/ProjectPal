@@ -41,5 +41,5 @@ protected:
 	TObjectPtr<APJ_GrassTornado> SpawnedTornado = nullptr;
 
 private:
-	APJ_GrassTornado* SpawnTornadoIfNeeded();
+	APJ_GrassTornado* SpawnTornado();
 };

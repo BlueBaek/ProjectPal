@@ -5,6 +5,7 @@
 
 #include "Character/Pal/PalCharacter.h"
 #include "Component/PalSkillComponent.h"
+#include "Component/PalStatComponent.h"
 #include "DataAsset/PalSkillDataAsset.h"
 
 bool UPalSkillExecution::StartPrepare(APalCharacter* InCaster, AActor* InTarget, const UPalSkillDataAsset* InSkillData)
@@ -44,6 +45,9 @@ void UPalSkillExecution::Activate()
 		Finish();
 		return;
 	}
+	
+	// 대미지 계산하여 캐시화
+	CachedDamage = DamageCompute(SkillData);
 	
 	// PrepareLoop는 Action으로 넘어갈 때 끊어준다(루프라 계속 도니까)
 	StopIfPlaying(Caster->GetSkillStartLoopMontage(), 0.1f);
@@ -108,6 +112,22 @@ void UPalSkillExecution::Finish()
 	{
 		SkillComp->ClearActiveExecution(this);
 	}
+}
+
+float UPalSkillExecution::DamageCompute(const UPalSkillDataAsset* SkillDA) const
+{
+	if (!SkillDA || !Caster) return 0.f;
+
+	const float Multiplier = FMath::Max(0.f, SkillDA->Damage.BaseDamage); // 배율
+	float Attack = 0.f;
+
+	if (UPalStatComponent* Stat = Caster->GetStatComponent())
+	{
+		Attack = FMath::Max(0.f, Stat->GetAttack());
+	}
+
+	UE_LOG(LogTemp, Warning, TEXT("Compute Damage : %f"), Attack * Multiplier);
+	return Attack * Multiplier; // ✅ 분자(=RawDamage)
 }
 
 void UPalSkillExecution::OnStartMontageEnded(UAnimMontage* Montage, bool bInterrupted)

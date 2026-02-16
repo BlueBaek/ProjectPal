@@ -65,9 +65,21 @@ void UPalStatComponent::SetStat()
 	
 	// DEF 공식
 	Defense = 50 + Level * (SDefense * 0.075) * (1 + IndividualDefense * 0.003);
+	
+	// 최대 체력 적용
+	CurrentHP = MaxHP;
 }
 
-void UPalStatComponent::ApplyDamage(int32 Damage)
+float UPalStatComponent::ApplyDamage(float RawDamage)
 {
+	// if (IsDead()) return 0.0f;
 	
+	RawDamage = FMath::Max(0.0f, RawDamage);
+	
+	const float Def = FMath::Max(1.f, Defense);
+	const float FinalDamage = (RawDamage > 0.f) ? (RawDamage / Def) : 0.f;
+	
+	CurrentHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
+
+	return FinalDamage;
 }

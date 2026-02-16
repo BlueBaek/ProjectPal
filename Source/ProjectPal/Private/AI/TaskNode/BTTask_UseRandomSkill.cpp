@@ -16,17 +16,19 @@ UBTTask_UseRandomSkill::UBTTask_UseRandomSkill()
 	TargetActorKey.AddObjectFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_UseRandomSkill, TargetActorKey), AActor::StaticClass());
 
 	// UsedSlotIndex는 int
-	UsedSlotIndexKey.AddIntFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_UseRandomSkill, UsedSlotIndexKey));
+	// UsedSlotIndexKey.AddIntFilter(this, GET_MEMBER_NAME_CHECKED(UBTTask_UseRandomSkill, UsedSlotIndexKey));
 }
 
 EBTNodeResult::Type UBTTask_UseRandomSkill::ExecuteTask(UBehaviorTreeComponent& OwnerComp, uint8* NodeMemory)
 {
+	// AIController 확인
 	AAIController* AICon = OwnerComp.GetAIOwner();
 	if (!AICon)
 	{
 		return EBTNodeResult::Failed;
 	}
 
+	// Pal 확인
 	APawn* Pawn = AICon->GetPawn();
 	APalCharacter* Pal = Cast<APalCharacter>(Pawn);
 	if (!Pal)
@@ -34,12 +36,14 @@ EBTNodeResult::Type UBTTask_UseRandomSkill::ExecuteTask(UBehaviorTreeComponent& 
 		return EBTNodeResult::Failed;
 	}
 
+	// 블랙보드 확인
 	UBlackboardComponent* BB = OwnerComp.GetBlackboardComponent();
 	if (!BB)
 	{
 		return EBTNodeResult::Failed;
 	}
 
+	// 타겟 액터 확인
 	AActor* TargetActor = Cast<AActor>(BB->GetValueAsObject(TargetActorKey.SelectedKeyName));
 	if (!TargetActor)
 	{
@@ -60,7 +64,6 @@ EBTNodeResult::Type UBTTask_UseRandomSkill::ExecuteTask(UBehaviorTreeComponent& 
 
 	int32 UsedSlotIndex = INDEX_NONE;
 	const bool bStarted = SkillComp->TryUseRandomActiveSkill(TargetActor, UsedSlotIndex);
-
 	if (!bStarted)
 	{
 		// 지금 쓸 수 있는 스킬이 없거나(쿨타임), 실행 시작 실패
@@ -68,10 +71,10 @@ EBTNodeResult::Type UBTTask_UseRandomSkill::ExecuteTask(UBehaviorTreeComponent& 
 	}
 
 	// (선택) 디버그로 "이번에 어떤 슬롯 사용했는지" BB에 기록
-	if (bWriteUsedSlotToBlackboard && UsedSlotIndexKey.SelectedKeyType)
-	{
-		BB->SetValueAsInt(UsedSlotIndexKey.SelectedKeyName, UsedSlotIndex);
-	}
+	// if (bWriteUsedSlotToBlackboard && UsedSlotIndexKey.SelectedKeyType)
+	// {
+	// 	BB->SetValueAsInt(UsedSlotIndexKey.SelectedKeyName, UsedSlotIndex);
+	// }
 
 	// 이 Task는 "시전 시작"만 성공으로 보고 끝냄.
 	// 실제 발사는 Start 몽타주의 SkillFire Notify에서 일어나며,

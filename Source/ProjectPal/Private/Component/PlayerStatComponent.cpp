@@ -79,16 +79,10 @@ void UPlayerStatComponent::SetLevel(int32 NewLevel)
 
 float UPlayerStatComponent::ApplyDamage(float RawDamage)
 {
-	if (IsDead()) return 0.0f;
-	
 	RawDamage = FMath::Max(0.0f, RawDamage);
-
-	// 간단 공식: Final = max(1, Raw - Defense) 단, Raw가 0이면 0 처리
-	float FinalDamage = 0.0f;
-	if (RawDamage > 0.0f)
-	{
-		FinalDamage = FMath::Max(1.0f, RawDamage - Defense);
-	}
+	
+	const float Def = FMath::Max(1.f, Defense);
+	const float FinalDamage = (RawDamage > 0.f) ? (RawDamage / Def) : 0.f;
 
 	const float OldHP = CurrentHP;
 	CurrentHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
@@ -104,6 +98,7 @@ float UPlayerStatComponent::ApplyDamage(float RawDamage)
 		}
 	}
 
+	UE_LOG(LogTemp, Warning, TEXT("Current HP : %f"), CurrentHP);
 	return FinalDamage;
 }
 

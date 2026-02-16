@@ -36,31 +36,35 @@ public:
 	// Prepare 끝난 시점에 호출: "발사" (타겟 당시 위치 스냅샷 + 방향 고정)
 	void Activate();
 	
-	UPROPERTY(VisibleAnywhere)
-	TObjectPtr<UStaticMeshComponent> VisualMesh;
-	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 private:
+	// OverlapBegin 이벤트 처리
 	UFUNCTION()
 	void OnDamageBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 							 UPrimitiveComponent* OtherComp, int32 OtherBodyIndex,
 							 bool bFromSweep, const FHitResult& SweepResult);
 
+	// OverlapEnd 이벤트 처리
 	UFUNCTION()
 	void OnDamageEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
 						   UPrimitiveComponent* OtherComp, int32 OtherBodyIndex);
 
+	// 도트딜 적용
 	void ApplyDotDamage();
+	
+	// Root
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USceneComponent> Root;
 
+	// 충돌 구체
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<USphereComponent> DamageSphere;
 	
-	// ✅ 캐스케이드 컴포넌트
+	// 스킬 이펙트가 캐스케이트 파티클 시스템을 이용
+	// 캐스케이드 컴포넌트
 	UPROPERTY(VisibleAnywhere)
 	TObjectPtr<UParticleSystemComponent> ParticleComp;
 
@@ -68,15 +72,20 @@ private:
 	UPROPERTY(EditDefaultsOnly, Category="VFX")
 	TObjectPtr<UParticleSystem> TornadoPS;
 	
+	
+	// 스킬 시전자
 	UPROPERTY()
 	TObjectPtr<AActor> Caster;
 
+	// 공격할 대상
 	UPROPERTY()
 	TObjectPtr<AActor> TargetActor;
 
+	// 스킬을 적용할 대상(닿으면 대미지)
 	UPROPERTY()
 	TSet<TObjectPtr<AActor>> OverlappingActors;
 
+	
 	UPROPERTY()
 	TMap<TObjectPtr<AActor>, float> NextDamageTimeByActor;
 
@@ -90,7 +99,8 @@ private:
 
 	float Elapsed = 0.f;
 
-	// ✅ 발사 순간 고정되는 값들(호밍 없음)
+	// ✅ 발사 순간 고정되는 값들
 	FVector FixedTargetLocation = FVector::ZeroVector;
 	FVector FixedDirection = FVector::ForwardVector;
+	
 };

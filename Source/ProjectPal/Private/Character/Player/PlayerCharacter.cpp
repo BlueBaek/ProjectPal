@@ -695,3 +695,20 @@ void APlayerCharacter::ShowHeldSpherePreview(bool bShow)
 		}
 	}
 }
+
+float APlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	class AController* EventInstigator, AActor* DamageCauser)
+{
+	// 필요하면 Super 호출로 엔진 기본 처리도 같이 타게 할 수 있음 (보통은 안 타도 됨)
+	// Super::TakeDamage(DamageAmount, DamageEvent, EventInstigator, DamageCauser);
+
+	if (!StatComponent) return 0.f;
+
+	// DamageAmount는 "RawDamage(=분자)" 라고 가정
+	const float FinalDamage = StatComponent->ApplyDamage(DamageAmount);
+
+	// 여기서 사망 처리/피격 리액션 등 추가 가능
+	// if (PlayerStatComponent->IsDead()) { ... }
+
+	return FinalDamage;
+}

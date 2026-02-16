@@ -8,7 +8,6 @@
 class APalCharacter;
 class UAnimInstance;
 class UAnimMontage;
-class UPalSkillComponent;
 class UPalSkillDataAsset;
 
 // This class does not need to be modified.
@@ -58,4 +57,8 @@ protected:
 	void StopIfPlaying(UAnimMontage* Montage, float BlendOutTime = 0.1f) const;
 
 	void Finish();           // 종료 처리(Execution 해제 등)
+	
+	// 스킬 대미지 계산.
+	float DamageCompute(const UPalSkillDataAsset* SkillDA) const;
+	float CachedDamage = 0.f;
 };

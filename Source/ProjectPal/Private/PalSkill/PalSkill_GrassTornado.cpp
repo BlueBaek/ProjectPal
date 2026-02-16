@@ -16,8 +16,10 @@ bool UPalSkill_GrassTornado::StartPrepare(APalCharacter* InCaster, AActor* InTar
 		return false;
 	}
 	
+	CachedDamage = DamageCompute(InSkillData);
+	
 	// Prepare 단계에서 미리 스폰 (bActivated=false 상태로 회전 연출됨)
-	SpawnTornadoIfNeeded();
+	SpawnTornado();
 	
 	return Super::StartPrepare(InCaster, InTarget, InSkillData);
 }
@@ -25,7 +27,7 @@ bool UPalSkill_GrassTornado::StartPrepare(APalCharacter* InCaster, AActor* InTar
 void UPalSkill_GrassTornado::OnSkillFire()
 {
 	// SkillAction 몽타주 중간(Notify)에서 호출됨
-	APJ_GrassTornado* Tornado = SpawnedTornado ? SpawnedTornado.Get() : SpawnTornadoIfNeeded();
+	APJ_GrassTornado* Tornado = SpawnedTornado ? SpawnedTornado.Get() : SpawnTornado();
 	if (!Tornado)
 	{
 		return;
@@ -35,7 +37,7 @@ void UPalSkill_GrassTornado::OnSkillFire()
 	Tornado->Activate();
 }
 
-APJ_GrassTornado* UPalSkill_GrassTornado::SpawnTornadoIfNeeded()
+APJ_GrassTornado* UPalSkill_GrassTornado::SpawnTornado()
 {
 	if (SpawnedTornado)
 	{
@@ -86,7 +88,8 @@ APJ_GrassTornado* UPalSkill_GrassTornado::SpawnTornadoIfNeeded()
 	const float Interval = (SkillData->Damage.DamageInterval <= 0.f) ? 0.2f : SkillData->Damage.DamageInterval;
 
 	// - DamagePerTick: BaseDamage를 틱 데미지로 사용(원하면 나중에 별도 값으로 분리 가능)
-	const float DamagePerTick = FMath::Max(0.f, SkillData->Damage.BaseDamage);
+	// const float DamagePerTick = FMath::Max(0.f, SkillData->Damage.BaseDamage);
+	const float DamagePerTick = FMath::Max(0.f, CachedDamage); // SkillExecution에서 계산한 대미지를 기반으로 수정
 
 	Tornado->InitTornado(
 		Caster,

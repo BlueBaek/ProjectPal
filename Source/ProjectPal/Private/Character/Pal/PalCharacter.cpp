@@ -144,6 +144,19 @@ void APalCharacter::SetMoveState(EPalMoveState NewState)
 	ApplyMoveSpeed();
 }
 
+float APalCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
+	class AController* EventInstigator, AActor* DamageCauser)
+{
+	if (!PalStatComponent) return 0.f;
+
+	const float FinalDamage = PalStatComponent->ApplyDamage(DamageAmount);
+
+	// 사망 처리/AI 상태 변경 등
+	// if (PalStatComponent->GetCurrentHP() <= 0.f) { ... }
+
+	return FinalDamage;
+}
+
 bool APalCharacter::LoadPalData()
 {
 	// PalDT 유/무 검사

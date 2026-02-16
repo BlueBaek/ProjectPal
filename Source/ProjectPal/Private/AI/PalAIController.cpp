@@ -6,10 +6,14 @@
 #include "BehaviorTree/BehaviorTree.h"
 #include "BehaviorTree/BlackboardComponent.h"
 #include "Character/Pal/PalCharacter.h"
+#include "GameFramework/FactionFunctionLibrary.h"
 #include "Perception/AIPerceptionComponent.h"
 #include "Perception/AISenseConfig_Sight.h"
 
 const FName APalAIController::KEY_PalMoveState(TEXT("PalMoveState"));
+const FName APalAIController::KEY_TargetActor(TEXT("TargetActor"));
+const FName APalAIController::KEY_HomeLocation(TEXT("HomeLocation"));
+const FName APalAIController::KEY_bDidAggro(TEXT("bDidAggro"));
 
 APalAIController::APalAIController()
 {
@@ -24,7 +28,7 @@ APalAIController::APalAIController()
 	SightConfig->PeripheralVisionAngleDegrees = 60.f;	// 시야 각(90도하면 양쪽해서 180도)
 	SightConfig->SetMaxAge(5.f);	// 대상 기억(초)
 	// 마지막으로 목격된 지점 주변 어디까지를 여전히 발견한 상태로 간주할 것인가
-	SightConfig->AutoSuccessRangeFromLastSeenLocation = 500.f; 
+	SightConfig->AutoSuccessRangeFromLastSeenLocation = 500.f;
 	
 	// 감지 진영 설정 : 현재는 모든 진영 감시
 	SightConfig->DetectionByAffiliation.bDetectEnemies = true;
@@ -59,9 +63,9 @@ void APalAIController::OnPossess(APawn* InPawn)
 	RunBehaviorTree(BT);
 	
 	// HomeLocation을 현재 팰 위치(스폰 위치)로 설정
-	BB->SetValueAsVector(TEXT("HomeLocation"), InPawn->GetActorLocation());
+	BB->SetValueAsVector(KEY_HomeLocation, InPawn->GetActorLocation());
 	// Target을 비움
-	BB->SetValueAsObject(TEXT("TargetActor"), nullptr);
+	BB->SetValueAsObject(KEY_TargetActor, nullptr);
 	// PalMoveState 초기값 세팅(예: 배회로 시작)
 	BB->SetValueAsEnum(KEY_PalMoveState, (uint8)EPalMoveState::Wandering);
 	ApplyMoveStateToPawn(EPalMoveState::Wandering);
@@ -86,19 +90,33 @@ void APalAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stim
 {
 	if (!Actor) return;
 	
+	// 자기 자신은 무시
+	if (Actor == GetPawn()) return;
+	
 	// Stimulus.WasSuccessfullySensed() == true  => 시야로 "감지됨"
 	// false => 감지 "해제"(시야에서 사라짐/기억 만료 등)
 	if (Stimulus.WasSuccessfullySensed())
 	{
+		// 적대 진영이 아니면 무시
+		APawn* MyPawn = GetPawn();
+		if (!MyPawn) return;
+
+		// ✅ 핵심: 다른 진영(적대)만 타겟으로 인정
+		if (!UFactionFunctionLibrary::AreHostile(MyPawn, Actor))
+		{
+			return; // 같은 진영/진영판정불가(인터페이스 없음) => 무시
+		}
+		
 		// 새 타겟인지 확인
 		AActor* Current = GetTargetActor();
 		if (Current != Actor)
 		{
 			SetTargetActor(Actor);
 			UE_LOG(LogTemp, Warning, TEXT("PalAICon : Target set: %s"), *GetNameSafe(Actor));
+			
 			if (UBlackboardComponent* BB = GetBlackboardComponent())
 			{
-				BB->SetValueAsBool(TEXT("bDidAggro"), false);
+				BB->SetValueAsBool(KEY_bDidAggro, false);
 			}
 		}
 	}
@@ -113,7 +131,7 @@ void APalAIController::OnTargetPerceptionUpdated(AActor* Actor, FAIStimulus Stim
 			// 타겟 잃었을 때 현재 타겟이면 해제 + 플래그 리셋
 			if (UBlackboardComponent* BB = GetBlackboardComponent())
 			{
-				BB->SetValueAsBool(TEXT("bDidAggro"), false);
+				BB->SetValueAsBool(KEY_bDidAggro, false);
 			}
 		}
 	}
@@ -123,7 +141,7 @@ void APalAIController::SetTargetActor(AActor* NewTarget)
 {
 	if (UBlackboardComponent* BB = GetBlackboardComponent())
 	{
-		BB->SetValueAsObject(TEXT("TargetActor"), NewTarget);
+		BB->SetValueAsObject(KEY_TargetActor, NewTarget);
 	}
 }
 
@@ -131,7 +149,7 @@ AActor* APalAIController::GetTargetActor() const
 {
 	if (const UBlackboardComponent* BB = GetBlackboardComponent())
 	{
-		return Cast<AActor>(BB->GetValueAsObject(TEXT("TargetActor")));
+		return Cast<AActor>(BB->GetValueAsObject(KEY_TargetActor));
 	}
 	return nullptr;
 }

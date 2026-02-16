@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "GameFramework/FactionInterface.h"
 #include "PalCharacter.generated.h"
 
 class UPalStatComponent;
@@ -38,7 +39,7 @@ enum class EPalMoveState : uint8
 };
 
 UCLASS()
-class PROJECTPAL_API APalCharacter : public ACharacter
+class PROJECTPAL_API APalCharacter : public ACharacter, public IFactionInterface
 {
 	GENERATED_BODY()
 
@@ -51,6 +52,21 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Pal")
 	UPalStatComponent* GetStatComponent() const { return PalStatComponent; }
+
+	// 진영 적용
+	virtual ECombatFaction GetCombatFaction_Implementation() const override
+	{
+		ECombatFaction Result =
+		(PalGroup == EPalGroup::Tamed)
+		? ECombatFaction::Player
+		: ECombatFaction::Wild;
+
+		UE_LOG(LogTemp, Warning,
+			TEXT("[Pal Faction] %s | PalGroup:%d → CombatFaction:%d"),
+			*GetName(), (int32)PalGroup, (int32)Result);
+
+		return Result;
+	}
 
 protected:
 	// Called when the game starts or when spawned
@@ -111,7 +127,7 @@ protected:
 	// 현재 타겟 변수
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AActor> CurrentTargetActor = nullptr;
-	
+
 public:
 	// 이동 상태 변경 인터페이스
 	void SetMoveState(EPalMoveState NewState);
@@ -129,28 +145,28 @@ public:
 	// 스킬 초기화
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Pal|Skill")
 	TArray<TObjectPtr<class UPalSkillDataAsset>> InitialSkills;
-	
+
 	// 스킬 사용 시 사용할 몽타주
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
 	TObjectPtr<UAnimMontage> SkillStart;
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
 	UAnimMontage* GetSkillStartMontage() const { return SkillStart; }
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
 	TObjectPtr<UAnimMontage> SkillStartLoop;
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
 	UAnimMontage* GetSkillStartLoopMontage() const { return SkillStartLoop; }
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
 	TObjectPtr<UAnimMontage> SkillAction;
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
 	UAnimMontage* GetSkillActionMontage() const { return SkillAction; }
-	
+
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Animation|Montage")
 	TObjectPtr<UAnimMontage> SkillActionLoop;
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
 	UAnimMontage* GetSkillActionLoopMontage() const { return SkillActionLoop; }
-	
+
 	// 현재 타겟 Setter
 	UFUNCTION(BlueprintCallable, Category="Combat")
 	void SetCurrentTarget(AActor* NewTarget) { CurrentTargetActor = NewTarget; }
@@ -158,7 +174,7 @@ public:
 	// 현재 타겟 Getter
 	UFUNCTION(BlueprintCallable, Category="Combat")
 	AActor* GetCurrentTarget() const { return CurrentTargetActor; }
-	
+
 	// PalGroup Set
 	UFUNCTION(BlueprintCallable, Category="Pal")
 	EPalGroup GetPalGroup() const { return PalGroup; }
@@ -166,7 +182,11 @@ public:
 	// PalGroup Set
 	UFUNCTION(BlueprintCallable, Category="Pal")
 	void SetPalGroup(EPalGroup NewGroup) { PalGroup = NewGroup; }
-	
+
+	// 대미지 적용
+	float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator,
+	                 AActor* DamageCauser) override;
+
 private:
 	// 데이터 테이블로부터 팰 정보 Load
 	bool LoadPalData();

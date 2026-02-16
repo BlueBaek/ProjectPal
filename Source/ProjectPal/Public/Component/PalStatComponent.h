@@ -95,7 +95,7 @@ public:
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
 	float GetCurrentHP() const { return CurrentHP; }
-
+	
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
-	void ApplyDamage(int32 Damage);
+	float ApplyDamage(float RawDamage);
 };

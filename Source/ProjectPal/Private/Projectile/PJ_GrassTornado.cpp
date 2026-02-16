@@ -5,24 +5,21 @@
 
 #include "Components/StaticMeshComponent.h"
 #include "Components/SphereComponent.h"
+#include "GameFramework/FactionFunctionLibrary.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 
 // Sets default values
 APJ_GrassTornado::APJ_GrassTornado()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
+	// 루트 컴포넌트
 	Root = CreateDefaultSubobject<USceneComponent>(TEXT("Root"));
 	SetRootComponent(Root);
 
-	VisualMesh = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("VisualMesh"));
-	VisualMesh->SetupAttachment(Root);
-	VisualMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
-	VisualMesh->SetRelativeScale3D(FVector(0.5f));
-	VisualMesh->SetHiddenInGame(false);
-	
+	// 충돌 판정용 구체
 	DamageSphere = CreateDefaultSubobject<USphereComponent>(TEXT("DamageSphere"));
 	DamageSphere->SetupAttachment(Root);
 	DamageSphere->SetSphereRadius(120.f);
@@ -31,13 +28,15 @@ APJ_GrassTornado::APJ_GrassTornado()
 	DamageSphere->SetCollisionResponseToAllChannels(ECR_Ignore);
 	DamageSphere->SetCollisionResponseToChannel(ECC_Pawn, ECR_Overlap);
 	DamageSphere->SetCollisionResponseToChannel(ECC_PhysicsBody, ECR_Overlap);
-	
+
+	// 이펙트 적용
 	ParticleComp = CreateDefaultSubobject<UParticleSystemComponent>(TEXT("ParticleComp"));
 	ParticleComp->SetupAttachment(Root);
-	ParticleComp->bAutoActivate = true;               // 자동 재생
+	ParticleComp->bAutoActivate = true; // 자동 재생
 	ParticleComp->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	ParticleComp->SetHiddenInGame(false);
-	
+
+	// 충돌 구체에 Overlap이벤트 적용
 	DamageSphere->OnComponentBeginOverlap.AddDynamic(this, &APJ_GrassTornado::OnDamageBeginOverlap);
 	DamageSphere->OnComponentEndOverlap.AddDynamic(this, &APJ_GrassTornado::OnDamageEndOverlap);
 }
@@ -46,7 +45,7 @@ APJ_GrassTornado::APJ_GrassTornado()
 void APJ_GrassTornado::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// ✅ 시스템 에셋 연결(필수)
 	if (ParticleComp && TornadoPS)
 	{
@@ -81,7 +80,7 @@ void APJ_GrassTornado::Tick(float DeltaTime)
 }
 
 void APJ_GrassTornado::InitTornado(AActor* InCaster, AActor* InTargetActor, float InMoveSpeed, float InLifeTime,
-	float InDamagePerTick, float InDamageInterval)
+                                   float InDamagePerTick, float InDamageInterval)
 {
 	Caster = InCaster;
 	TargetActor = InTargetActor;
@@ -112,20 +111,26 @@ void APJ_GrassTornado::Activate()
 }
 
 void APJ_GrassTornado::OnDamageBeginOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep, const FHitResult& SweepResult)
+                                            UPrimitiveComponent* OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+                                            const FHitResult& SweepResult)
 {
 	if (!OtherActor || OtherActor == this || OtherActor == Caster)
 		return;
 
+	UE_LOG(LogTemp, Warning, TEXT("[Tornado] BeginOverlap: %s"), *GetNameSafe(OtherActor));
+
+	// Overlap된 대상을 저장
 	OverlappingActors.Add(OtherActor);
+	// TickDamage 적용
 	NextDamageTimeByActor.FindOrAdd(OtherActor) = GetWorld()->GetTimeSeconds(); // 즉시 1틱
 }
 
 void APJ_GrassTornado::OnDamageEndOverlap(UPrimitiveComponent* OverlappedComp, AActor* OtherActor,
-	UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
+                                          UPrimitiveComponent* OtherComp, int32 OtherBodyIndex)
 {
 	if (!OtherActor) return;
 
+	// Overlap된 대상 삭제
 	OverlappingActors.Remove(OtherActor);
 	NextDamageTimeByActor.Remove(OtherActor);
 }
@@ -142,6 +147,17 @@ void APJ_GrassTornado::ApplyDotDamage()
 		float& NextTime = NextDamageTimeByActor.FindOrAdd(Victim);
 		if (Now >= NextTime)
 		{
+			if (!Caster || !UFactionFunctionLibrary::AreHostile(Caster, Victim))
+			{
+				// 같은 진영이거나(플레이어-플레이어팰) / 진영 판정 불가 / 시전자 없음 => 데미지 무시
+				NextTime = Now + DamageInterval; // (선택) 틱만 밀어두고 continue
+				continue;
+			}
+
+			UE_LOG(LogTemp, Warning,
+			       TEXT("[Tornado] ApplyDamage -> Victim:%s Raw:%f Interval:%f"),
+			       *GetNameSafe(Victim), DamagePerTick, DamageInterval);
+
 			UGameplayStatics::ApplyDamage(
 				Victim,
 				DamagePerTick,
