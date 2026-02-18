@@ -9,6 +9,44 @@
 
 class APalCharacter;
 
+// PalStat
+USTRUCT(BlueprintType)
+struct FPalStatSaveData
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 Level = 1;
+
+	// 개체값(랜덤) - 개체 고유성 유지용
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 IndividualHP = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 IndividualAttack = 0;
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) int32 IndividualDefense = 0;
+
+	// 런타임
+	UPROPERTY(EditAnywhere, BlueprintReadWrite) float CurrentHP = 0.f;
+};
+
+// PalSkill
+USTRUCT(BlueprintType)
+struct FPalSkillSaveData
+{
+	GENERATED_BODY()
+
+	// Skills 배열 전체(Active 0~2 + Learned 3~)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<TObjectPtr<class UPalSkillDataAsset>> Skills;
+
+	// 쿨타임 맵 저장용 (Asset -> Remaining)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<TObjectPtr<class UPalSkillDataAsset>> CooldownAssets;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	TArray<float> CooldownRemaining;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 SelectedActiveSlotIndex = 0;
+};
+
 // 팰 복원을 위해 필요한 팰의 정보
 USTRUCT(BlueprintType)
 struct FPalOwnedEntry
@@ -31,6 +69,13 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	FName Nickname;
 
+	// ✅ 추가: 포획/회수 시점 스냅샷
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPalStatSaveData StatData;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FPalSkillSaveData SkillData;
+	
 	bool IsValid() const
 	{
 		return PalClass != nullptr;

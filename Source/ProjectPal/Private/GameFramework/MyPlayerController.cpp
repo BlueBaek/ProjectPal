@@ -5,9 +5,12 @@
 
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Blueprint/UserWidget.h"
 #include "Character/Player/CombatComponent.h"
 #include "Character/Player/PlayerCharacter.h"
 #include "Component/OwnedPalComponent.h"
+#include "Component/PlayerStatComponent.h"
+#include "Widget/PlayerHUDWidget.h"
 
 AMyPlayerController::AMyPlayerController()
 {
@@ -77,6 +80,26 @@ void AMyPlayerController::BeginPlay()
 
 	// Subsystem을 통해 할당한 InputMappingContext를 활성화
 	Subsystem->AddMappingContext(IdleIMC, 0); // Priority : 0 -> 우선순위가 가장 높음
+	
+	// 위젯 붙이기
+	if (!PlayerHUDClass) return;
+
+	PlayerHUDWidget = CreateWidget<UUserWidget>(this, PlayerHUDClass);
+	if (!PlayerHUDWidget) return;
+
+	PlayerHUDWidget->AddToViewport();
+
+	// ✅ 스탯 바인딩
+	if (UPlayerHUDWidget* HUD = Cast<UPlayerHUDWidget>(PlayerHUDWidget))
+	{
+		if (APlayerCharacter* PC = Cast<APlayerCharacter>(GetPawn()))
+		{
+			if (UPlayerStatComponent* Stat = PC->FindComponentByClass<UPlayerStatComponent>())
+			{
+				HUD->BindToPlayer(Stat);
+			}
+		}
+	}
 }
 
 void AMyPlayerController::SetupInputComponent()

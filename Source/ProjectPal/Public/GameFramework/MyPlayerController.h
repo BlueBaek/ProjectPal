@@ -13,6 +13,7 @@ struct FInputActionValue;
 class UInputMappingContext;
 class UInputAction;
 class UEnhancedInputLocalPlayerSubsystem;
+class UUserWidget;
 
 UCLASS()
 class PROJECTPAL_API AMyPlayerController : public APlayerController
@@ -110,6 +111,13 @@ protected:
 	void Input_TogglePalSpawn();   // E
 	void Input_PrevPalSlot();    // 1
 	void Input_NextPalSlot();    // 3
+	
+	// 위젯
+	UPROPERTY(EditDefaultsOnly, Category="UI")
+	TSubclassOf<UUserWidget> PlayerHUDClass;
+
+	UPROPERTY(Transient)
+	TObjectPtr<UUserWidget> PlayerHUDWidget;
 	
 private:
 	// 휠 디바운스용

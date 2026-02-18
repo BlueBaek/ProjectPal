@@ -96,6 +96,14 @@ public:
 	// 현재 무기의 타입 반환
 	EWeaponType GetCurrentWeaponType() const;
 	
+	// 현재 무기 데이터를 받아옴
+	UFUNCTION(BlueprintPure, Category="Combat|Weapon")
+	UWeaponDataAsset* GetCurrentWeaponData() const { return CurrentWeaponData; }
+
+	// 무기의 데미지를 받아옴
+	UFUNCTION(BlueprintPure, Category="Combat|Weapon")
+	float GetCurrentWeaponDamage() const;
+	
 private:
 	// 무기 타입별 입력 처리 함수
 	void HandleUnarmedAttack(bool bPressed);

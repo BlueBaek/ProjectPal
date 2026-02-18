@@ -4,6 +4,7 @@
 #include "Component/PalSkillComponent.h"
 
 #include "Character/Pal/PalCharacter.h"
+#include "Component/OwnedPalComponent.h"
 #include "DataAsset/PalSkillDataAsset.h"
 #include "PalSkill/PalSkillExecution.h"
 
@@ -433,4 +434,63 @@ void UPalSkillComponent::ClearActiveExecution(class UPalSkillExecution* InExec)
 	{
 		ActiveExecution = nullptr;
 	}
+}
+
+void UPalSkillComponent::ExportToOwned(FPalSkillSaveData& Out) const
+{
+	Out.Skills.Reset();
+	Out.Skills.Reserve(Skills.Num());
+	for (const FPalSkillSlot& Slot : Skills)
+	{
+		Out.Skills.Add(Slot.Skill);
+	}
+
+	Out.CooldownAssets.Reset();
+	Out.CooldownRemaining.Reset();
+	for (const auto& Pair : SkillCooldownRemaining)
+	{
+		if (Pair.Key)
+		{
+			Out.CooldownAssets.Add(Pair.Key);
+			Out.CooldownRemaining.Add(Pair.Value);
+		}
+	}
+
+	Out.SelectedActiveSlotIndex = SelectedActiveSlotIndex;
+}
+
+void UPalSkillComponent::ImportFromOwned(const FPalSkillSaveData& In)
+{
+	// Skills 배열 복원
+	Skills.Reset();
+
+	const int32 TargetNum = FMath::Max(ActiveSlotCount, In.Skills.Num());
+	Skills.SetNum(TargetNum);
+
+	for (int32 i = 0; i < In.Skills.Num(); ++i)
+	{
+		Skills[i].Skill = In.Skills[i];
+	}
+
+	// UI 갱신 이벤트(Active 0~2만)
+	for (int32 i = 0; i < ActiveSlotCount; ++i)
+	{
+		OnSkillSlotChanged.Broadcast(i, Skills[i].Skill);
+	}
+
+	// 쿨타임 맵 복원
+	SkillCooldownRemaining.Reset();
+	const int32 PairCount = FMath::Min(In.CooldownAssets.Num(), In.CooldownRemaining.Num());
+	for (int32 i = 0; i < PairCount; ++i)
+	{
+		if (In.CooldownAssets[i])
+		{
+			SkillCooldownRemaining.Add(In.CooldownAssets[i], FMath::Max(0.f, In.CooldownRemaining[i]));
+		}
+	}
+
+	// 선택 슬롯 복원
+	const int32 Old = SelectedActiveSlotIndex;
+	SelectedActiveSlotIndex = FMath::Clamp(In.SelectedActiveSlotIndex, 0, ActiveSlotCount - 1);
+	OnSelectedSlotChanged.Broadcast(SelectedActiveSlotIndex, Old);
 }

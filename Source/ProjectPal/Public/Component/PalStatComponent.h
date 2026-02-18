@@ -6,6 +6,10 @@
 #include "Components/ActorComponent.h"
 #include "PalStatComponent.generated.h"
 
+struct FPalStatSaveData;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnPalHPChanged, float, CurrentHP, float, MaxHP);
+DECLARE_MULTICAST_DELEGATE(FOnDeath);
 
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class PROJECTPAL_API UPalStatComponent : public UActorComponent
@@ -98,4 +102,20 @@ public:
 	
 	UFUNCTION(BlueprintCallable, Category="Pal|Stat")
 	float ApplyDamage(float RawDamage);
+	
+	void ExportToOwned(FPalStatSaveData& Out) const;
+	void ImportFromOwned(const FPalStatSaveData& In);
+	
+	// HP가 변경되었을 때(Current/Max) 알림
+	UPROPERTY(BlueprintAssignable, Category="Pal|Stat")
+	FOnPalHPChanged OnHPChanged;
+	
+	// 죽음 델리게이트
+	FOnDeath OnDeath;
+	
+	// 죽음 판단 boolean
+	bool IsDead() const { return CurrentHP <= 0.f; }
+	
+private:
+	void BroadcastHPChanged();
 };

@@ -219,6 +219,17 @@ void UCombatComponent::EquipWeaponData(UWeaponDataAsset* NewWeaponData)
 	// GetCurrentAttackMontage()가 CurrentWeaponData 우선 반환인지 꼭 확인!
 }
 
+float UCombatComponent::GetCurrentWeaponDamage() const
+{
+	// UnarmedData/CurrentWeaponData 정책에 따라 둘 중 하나만 써도 되지만,
+	// 현재 구조상 CurrentWeaponData는 항상 유효하게 유지되는 흐름이라 가정.
+	const UWeaponDataAsset* DA = CurrentWeaponData ? CurrentWeaponData : UnarmedData;
+	if (!DA) return 0.f;
+
+	// 네가 WeaponDataAsset에 추가한 변수명으로 교체!
+	return DA->WeaponDamage; // 혹은 DA->Damage
+}
+
 void UCombatComponent::HandleUnarmedAttack(bool bPressed)
 {
 	bAttackPressed = bPressed;

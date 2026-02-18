@@ -4,6 +4,7 @@
 #include "Component/OwnedPalComponent.h"
 
 #include "Character/Player/PlayerCharacter.h"
+#include "Component/PalSkillComponent.h"
 #include "Component/PalStatComponent.h"
 #include "Kismet/GameplayStatics.h"
 
@@ -119,14 +120,18 @@ bool UOwnedPalComponent::AddPalFromActor(APalCharacter* PalActor)
 	FPalOwnedEntry Entry;
 	Entry.PalClass = PalActor->GetClass();
 
-	// 레벨은 StatComponent에서
+	// --- Stat 스냅샷 ---
 	if (UPalStatComponent* Stat = PalActor->GetStatComponent())
 	{
-		Entry.Level = Stat->GetLevel();
+		Stat->ExportToOwned(Entry.StatData);
+		Entry.Level = Entry.StatData.Level;
 	}
 
-	// 닉네임은 일단 비워두거나, 필요하면 PalCharacter에 DisplayName Getter 추가해서 넣어도 됨
-	// Entry.Nickname = ...
+	// --- Skill 스냅샷 ---
+	if (UPalSkillComponent* Skill = PalActor->FindComponentByClass<UPalSkillComponent>())
+	{
+		Skill->ExportToOwned(Entry.SkillData);
+	}
 
 	return AddPal(Entry);
 }
@@ -222,13 +227,18 @@ void UOwnedPalComponent::SyncFromSpawnedPalToEntry(APalCharacter* PalActor, FPal
 {
 	if (!PalActor) return;
 
-	// 예시: 레벨 동기화
+	// --- Stat 저장 ---
 	if (UPalStatComponent* Stat = PalActor->GetStatComponent())
 	{
-		Entry.Level = Stat->GetLevel();
+		Stat->ExportToOwned(Entry.StatData);
+		Entry.Level = Entry.StatData.Level;
 	}
 
-	// TODO: HP/스킬/상태이상/경험치 등도 여기서 Entry에 저장
+	// --- Skill 저장 ---
+	if (UPalSkillComponent* Skill = PalActor->FindComponentByClass<UPalSkillComponent>())
+	{
+		Skill->ExportToOwned(Entry.SkillData);
+	}
 }
 
 bool UOwnedPalComponent::SpawnActivePal()
@@ -249,8 +259,17 @@ bool UOwnedPalComponent::SpawnActivePal()
 	
 	// 팰의 Owner 지정(AI용)
 	Spawned->SetOwner(GetOwner());
-	// TODO: Entry(영속 데이터) -> PalStatComponent 초기화(레벨/HP/스킬) 필요하면 여기서
-	// if (UPalStatComponent* Stat = Spawned->GetStatComponent()) { Stat->InitFromOwned(Entry); }
+	
+	// ✅ Entry -> Component 복원
+	if (UPalStatComponent* Stat = Spawned->GetStatComponent())
+	{
+		Stat->ImportFromOwned(Entry.StatData);
+	}
+
+	if (UPalSkillComponent* Skill = Spawned->FindComponentByClass<UPalSkillComponent>())
+	{
+		Skill->ImportFromOwned(Entry.SkillData);
+	}
 
 	CurrentSpawnedPal = Spawned;
 	CurrentSpawnedIndex = ActiveIndex;
@@ -263,9 +282,14 @@ bool UOwnedPalComponent::DespawnCurrentPal()
 		return false;
 
 	// ActiveIndex가 유효할 때만 저장 갱신
-	if (OwnedPals.IsValidIndex(ActiveIndex))
+	// if (OwnedPals.IsValidIndex(ActiveIndex))
+	// {
+	// 	SyncFromSpawnedPalToEntry(CurrentSpawnedPal, OwnedPals[ActiveIndex]);
+	// }
+	const int32 SaveIndex = (OwnedPals.IsValidIndex(CurrentSpawnedIndex)) ? CurrentSpawnedIndex : ActiveIndex;
+	if (OwnedPals.IsValidIndex(SaveIndex))
 	{
-		SyncFromSpawnedPalToEntry(CurrentSpawnedPal, OwnedPals[ActiveIndex]);
+		SyncFromSpawnedPalToEntry(CurrentSpawnedPal, OwnedPals[SaveIndex]);
 	}
 
 	// 월드에서 제거(회수)

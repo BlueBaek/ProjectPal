@@ -21,6 +21,10 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
 	EWeaponType WeaponType = EWeaponType::Unarmed;
 	
+	// 무기가 가진 대미지
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon")
+	float WeaponDamage = 0.f;
+	
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category="Weapon|Visual")
 	TObjectPtr<USkeletalMesh> WeaponMesh; // 맨손일 경우 NULL
 	

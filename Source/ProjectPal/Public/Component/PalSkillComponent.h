@@ -6,6 +6,7 @@
 #include "Components/ActorComponent.h"
 #include "PalSkillComponent.generated.h"
 
+struct FPalSkillSaveData;
 class UPalSkillDataAsset;
 class UPalSkillExecution;
 class APalCharacter;
@@ -165,4 +166,8 @@ private:
 	
 	// 내부 유틸: Owner를 PalCharacter로
 	APalCharacter* GetPalOwner() const;
+	
+public:
+	void ExportToOwned(FPalSkillSaveData& Out) const;
+	void ImportFromOwned(const FPalSkillSaveData& In);
 };

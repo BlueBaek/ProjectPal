@@ -12,7 +12,7 @@ public class ProjectPal : ModuleRules
 		PublicDependencyModuleNames.AddRange(new string[]
 		{
 			"Core", "CoreUObject", "Engine", "InputCore", "EnhancedInput", "AIModule", "GameplayTasks",
-			"NavigationSystem"
+			"NavigationSystem", "UMG", "Slate", "SlateCore"
 		});
 	}
 }

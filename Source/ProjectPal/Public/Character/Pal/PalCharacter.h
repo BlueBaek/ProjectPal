@@ -12,6 +12,7 @@ class UPalSkillComponent;
 enum class EPalType : uint8;
 class UDataTable;
 class UAnimMontage;
+class UWidgetComponent;
 
 // 포획 가능 구분용
 UENUM(BlueprintType)
@@ -57,13 +58,13 @@ public:
 	virtual ECombatFaction GetCombatFaction_Implementation() const override
 	{
 		ECombatFaction Result =
-		(PalGroup == EPalGroup::Tamed)
-		? ECombatFaction::Player
-		: ECombatFaction::Wild;
+			(PalGroup == EPalGroup::Tamed)
+				? ECombatFaction::Player
+				: ECombatFaction::Wild;
 
 		UE_LOG(LogTemp, Warning,
-			TEXT("[Pal Faction] %s | PalGroup:%d → CombatFaction:%d"),
-			*GetName(), (int32)PalGroup, (int32)Result);
+		       TEXT("[Pal Faction] %s | PalGroup:%d → CombatFaction:%d"),
+		       *GetName(), (int32)PalGroup, (int32)Result);
 
 		return Result;
 	}
@@ -92,7 +93,7 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Pal")
 	TArray<EPalType> PalTypes;
 
-	// 팰 최초 레벨 설정
+	// 팰 레벨
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category="Pal")
 	int32 PalLevel = 1;
 
@@ -131,7 +132,29 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Pal|Ownership")
 	TObjectPtr<AActor> MasterActor = nullptr;
 	
+	// 위젯 컴포넌트
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="UI")
+	TObjectPtr<UWidgetComponent> NameplateWidgetComp;
+
 public:
+	// Setter
+	// 현재 타겟 Setter
+	UFUNCTION(BlueprintCallable, Category="Combat")
+	void SetCurrentTarget(AActor* NewTarget) { CurrentTargetActor = NewTarget; }
+	// PalGroup Set
+	UFUNCTION(BlueprintCallable, Category="Pal")
+	void SetPalGroup(EPalGroup NewGroup) { PalGroup = NewGroup; }
+	
+	// Getter
+	FORCEINLINE TArray<EPalType> GetPalTypes() { return PalTypes; }
+	FORCEINLINE FName GetPalName() { return FName(*PalName.ToString()); }
+	FORCEINLINE FName GetPalDisplayName() { return FName(*PalDisplayName.ToString()); }
+	UFUNCTION(BlueprintCallable, Category="Pal")
+	FORCEINLINE EPalGroup GetPalGroup() const { return PalGroup; }
+	// 현재 타겟 Getter
+	UFUNCTION(BlueprintCallable, Category="Combat")
+	FORCEINLINE AActor* GetCurrentTarget() const { return CurrentTargetActor; }
+	
 	// 이동 상태 변경 인터페이스
 	void SetMoveState(EPalMoveState NewState);
 
@@ -170,32 +193,25 @@ public:
 	UFUNCTION(BlueprintCallable, Category="Animation|Montage")
 	UAnimMontage* GetSkillActionLoopMontage() const { return SkillActionLoop; }
 
-	// 현재 타겟 Setter
-	UFUNCTION(BlueprintCallable, Category="Combat")
-	void SetCurrentTarget(AActor* NewTarget) { CurrentTargetActor = NewTarget; }
-
-	// 현재 타겟 Getter
-	UFUNCTION(BlueprintCallable, Category="Combat")
-	AActor* GetCurrentTarget() const { return CurrentTargetActor; }
-
-	// PalGroup Set
-	UFUNCTION(BlueprintCallable, Category="Pal")
-	EPalGroup GetPalGroup() const { return PalGroup; }
-
-	// PalGroup Set
-	UFUNCTION(BlueprintCallable, Category="Pal")
-	void SetPalGroup(EPalGroup NewGroup) { PalGroup = NewGroup; }
-
 	// 대미지 적용
 	float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator,
 	                 AActor* DamageCauser) override;
-	
+
 	// 주인(마스터) 세팅/조회
 	UFUNCTION(BlueprintCallable, Category="Pal|Ownership")
-	void SetMasterActor(AActor* InMaster) {MasterActor = InMaster;}
+	void SetMasterActor(AActor* InMaster) { MasterActor = InMaster; }
 
 	UFUNCTION(BlueprintCallable, Category="Pal|Ownership")
-	AActor* GetMasterActor() const {return MasterActor.Get();}
+	AActor* GetMasterActor() const { return MasterActor.Get(); }
+
+	// 죽었을 때 구현용
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category="Death")
+	bool bIsDead = false;
+
+	UFUNCTION()
+	void HandleDeath();
+
+	void StartRagdoll();
 	
 private:
 	// 데이터 테이블로부터 팰 정보 Load

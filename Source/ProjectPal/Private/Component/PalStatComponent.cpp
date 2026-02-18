@@ -3,6 +3,7 @@
 
 #include "Component/PalStatComponent.h"
 
+#include "Component/OwnedPalComponent.h"
 #include "Data/PalData.h"
 
 // Sets default values for this component's properties
@@ -20,9 +21,6 @@ UPalStatComponent::UPalStatComponent()
 void UPalStatComponent::BeginPlay()
 {
 	Super::BeginPlay();
-
-	// ...
-	
 }
 
 
@@ -68,11 +66,14 @@ void UPalStatComponent::SetStat()
 	
 	// 최대 체력 적용
 	CurrentHP = MaxHP;
+	
+	// 체력 변경 알림
+	BroadcastHPChanged();
 }
 
 float UPalStatComponent::ApplyDamage(float RawDamage)
 {
-	// if (IsDead()) return 0.0f;
+	if ((RawDamage <= 0.f) || IsDead()) return 0.f;
 	
 	RawDamage = FMath::Max(0.0f, RawDamage);
 	
@@ -81,5 +82,48 @@ float UPalStatComponent::ApplyDamage(float RawDamage)
 	
 	CurrentHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 
+	if (CurrentHP <= 0.f)
+	{
+		OnDeath.Broadcast();
+	}
+	
+	BroadcastHPChanged();
 	return FinalDamage;
+}
+
+void UPalStatComponent::ExportToOwned(FPalStatSaveData& Out) const
+{
+	Out.Level = Level;
+	Out.IndividualHP = IndividualHP;
+	Out.IndividualAttack = IndividualAttack;
+	Out.IndividualDefense = IndividualDefense;
+	Out.CurrentHP = CurrentHP;
+}
+
+void UPalStatComponent::ImportFromOwned(const FPalStatSaveData& In)
+{
+	Level = In.Level;
+
+	// 개체값 복원
+	IndividualHP = In.IndividualHP;
+	IndividualAttack = In.IndividualAttack;
+	IndividualDefense = In.IndividualDefense;
+
+	// 레벨/개체값 기반으로 스탯 재계산
+	SetStat();
+
+	// 현재 HP 복원 (MaxHP 고려)
+	if (In.CurrentHP <= 0.f)
+	{
+		CurrentHP = MaxHP;
+	}
+	else
+	{
+		CurrentHP = FMath::Clamp(In.CurrentHP, 1.f, MaxHP);
+	}
+}
+
+void UPalStatComponent::BroadcastHPChanged()
+{
+	OnHPChanged.Broadcast(CurrentHP, MaxHP);
 }
