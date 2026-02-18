@@ -11,7 +11,8 @@
 			"AdditionalDependencies": [
 				"Engine",
 				"AnimationModifiers",
-				"AIModule"
+				"AIModule",
+				"UMG"
 			]
 		}
 	],
