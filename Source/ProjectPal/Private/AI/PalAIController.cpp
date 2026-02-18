@@ -14,6 +14,7 @@ const FName APalAIController::KEY_PalMoveState(TEXT("PalMoveState"));
 const FName APalAIController::KEY_TargetActor(TEXT("TargetActor"));
 const FName APalAIController::KEY_HomeLocation(TEXT("HomeLocation"));
 const FName APalAIController::KEY_bDidAggro(TEXT("bDidAggro"));
+const FName APalAIController::KEY_OwnerActor(TEXT("OwnerActor"));
 
 APalAIController::APalAIController()
 {
@@ -51,26 +52,59 @@ void APalAIController::BeginPlay()
 void APalAIController::OnPossess(APawn* InPawn)
 {
 	Super::OnPossess(InPawn);
-	
-	if (!BT || !InPawn) return;
-	
+
+	if (!InPawn) return;
+
+	APalCharacter* Pal = Cast<APalCharacter>(InPawn);
+	const bool bOwned = (Pal && Pal->GetPalGroup() == EPalGroup::Tamed);
+
+	UBehaviorTree* TreeToRun = (bOwned && OwnedBT) ? OwnedBT : BT;
+	if (!TreeToRun)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[PalAI] No BehaviorTree assigned (Owned=%d)"), bOwned);
+		return;
+	}
+
 	UBlackboardComponent* BB = nullptr;
-	if (!BT->BlackboardAsset || !UseBlackboard(BT->BlackboardAsset, BB) || !BB)
+	if (!TreeToRun->BlackboardAsset || !UseBlackboard(TreeToRun->BlackboardAsset, BB) || !BB)
 	{
 		UE_LOG(LogTemp, Error, TEXT("[PalAI] Blackboard init failed"));
 		return;
 	}
-	RunBehaviorTree(BT);
+
+	RunBehaviorTree(TreeToRun);
 	
-	// HomeLocation을 현재 팰 위치(스폰 위치)로 설정
+	// ✅ 소유 팰이면 OwnerActor BB 세팅
+	// if (bOwned && Pal)
+	// {
+	// 	AActor* PalOwner = Pal->GetOwner();
+	// 	if (PalOwner)
+	// 	{
+	// 		BB->SetValueAsObject(KEY_OwnerActor, PalOwner);
+	// 	}
+	// 	else
+	// 	{
+	// 		UE_LOG(LogTemp, Warning, TEXT("[PalAI] Tamed Pal has no Owner (SetOwner at spawn)!"));
+	// 	}
+	// }
+
+	// ✅ Follow용 주인 세팅: 엔진 Owner 말고 MasterActor 사용
+	if (bOwned && Pal)
+	{
+		AActor* Master = Pal->GetMasterActor();
+		BB->SetValueAsObject(KEY_OwnerActor, Master);
+
+		UE_LOG(LogTemp, Warning, TEXT("[OwnedFollow] Master=%s"), *GetNameSafe(Master));
+	}
+
+	
 	BB->SetValueAsVector(KEY_HomeLocation, InPawn->GetActorLocation());
-	// Target을 비움
 	BB->SetValueAsObject(KEY_TargetActor, nullptr);
-	// PalMoveState 초기값 세팅(예: 배회로 시작)
-	BB->SetValueAsEnum(KEY_PalMoveState, (uint8)EPalMoveState::Wandering);
-	ApplyMoveStateToPawn(EPalMoveState::Wandering);
-	
-	// PalMoveState 키 변화 감지 등록(이게 핵심)
+
+	const EPalMoveState StartState = bOwned ? EPalMoveState::Following : EPalMoveState::Wandering;
+	BB->SetValueAsEnum(KEY_PalMoveState, (uint8)StartState);
+	ApplyMoveStateToPawn(StartState);
+
 	const FBlackboard::FKey KeyID = BB->GetKeyID(KEY_PalMoveState);
 	if (KeyID != FBlackboard::InvalidKey)
 	{
@@ -79,10 +113,6 @@ void APalAIController::OnPossess(APawn* InPawn)
 			this,
 			FOnBlackboardChangeNotification::CreateUObject(this, &APalAIController::OnMoveStateChanged)
 		);
-	}
-	else
-	{
-		UE_LOG(LogTemp, Error, TEXT("[PalAI] Blackboard has no key named MoveState"));
 	}
 }
 

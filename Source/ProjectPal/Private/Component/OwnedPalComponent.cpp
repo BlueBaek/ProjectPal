@@ -3,7 +3,21 @@
 
 #include "Component/OwnedPalComponent.h"
 
+#include "Character/Player/PlayerCharacter.h"
 #include "Component/PalStatComponent.h"
+#include "Kismet/GameplayStatics.h"
+
+static AActor* ResolveMasterActor(UObject* WorldContextObject)
+{
+	if (!WorldContextObject) return nullptr;
+
+	UWorld* World = WorldContextObject->GetWorld();
+	if (!World) return nullptr;
+
+	// 로컬 싱글 기준: 0번 플레이어
+	APawn* PlayerPawn = UGameplayStatics::GetPlayerPawn(WorldContextObject, 0);
+	return PlayerPawn; // PlayerCharacter면 Pawn이기도 함
+}
 
 // Sets default values for this component's properties
 UOwnedPalComponent::UOwnedPalComponent()
@@ -164,23 +178,44 @@ APalCharacter* UOwnedPalComponent::SpawnPalFromEntry(const FPalOwnedEntry& Entry
 {
 	if (!Entry.PalClass) return nullptr;
 
-	AActor* OwnerActor = GetOwner();
-	if (!OwnerActor) return nullptr;
+	AActor* Master = ResolveMasterActor(this);
+	if (!Master) return nullptr;
 
-	UWorld* World = OwnerActor->GetWorld();
+	UWorld* World = Master->GetWorld();
 	if (!World) return nullptr;
 
 	// 플레이어 기준 소환 위치
-	const FVector SpawnLoc = OwnerActor->GetActorLocation() + OwnerActor->GetActorRotation().RotateVector(SpawnOffset);
-	const FRotator SpawnRot = OwnerActor->GetActorRotation();
+	const FVector SpawnLoc = Master->GetActorLocation() + Master->GetActorRotation().RotateVector(SpawnOffset);
+	const FRotator SpawnRot = Master->GetActorRotation();
+	const FTransform SpawnTM(SpawnRot, SpawnLoc);
+	
+	// ✅ Deferred Spawn: FinishSpawning 전까지 초기값 세팅 가능
+	APalCharacter* Pal = World->SpawnActorDeferred<APalCharacter>(
+		Entry.PalClass,
+		SpawnTM,
+		nullptr,
+		nullptr,
+		ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn
+	);
 
-	FActorSpawnParameters Params;
-	Params.Owner = OwnerActor;
-	Params.Instigator = Cast<APawn>(OwnerActor);
-	Params.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
-
-	APalCharacter* Spawned = World->SpawnActor<APalCharacter>(Entry.PalClass, SpawnLoc, SpawnRot, Params);
-	return Spawned;
+	if (!Pal)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("[SpawnOwnedPalDeferred] SpawnActorDeferred failed"));
+		return nullptr;
+	}
+	
+	// ✅ OnPossess가 일어나기 전에 "소유 팰" 상태를 확정해야 BT 교체가 됨
+	Pal->SetMasterActor(Master);
+	Pal->SetPalGroup(EPalGroup::Tamed);
+	Pal->FinishSpawning(SpawnTM);
+	
+	UE_LOG(LogTemp, Warning, TEXT("[Spawn] Pal=%s Master=%s Owner=%s Controller=%s"),
+		*GetNameSafe(Pal),
+		*GetNameSafe(Pal->GetMasterActor()),
+		*GetNameSafe(Pal->GetOwner()),
+		*GetNameSafe(Pal->GetController()));
+	
+	return Pal;
 }
 
 void UOwnedPalComponent::SyncFromSpawnedPalToEntry(APalCharacter* PalActor, FPalOwnedEntry& Entry)
@@ -211,10 +246,9 @@ bool UOwnedPalComponent::SpawnActivePal()
 	APalCharacter* Spawned = SpawnPalFromEntry(Entry);
 	if (!Spawned)
 		return false;
-
-	// 소유/그룹 처리(프로젝트 규칙에 맞게)
-	Spawned->SetPalGroup(EPalGroup::Tamed);
-
+	
+	// 팰의 Owner 지정(AI용)
+	Spawned->SetOwner(GetOwner());
 	// TODO: Entry(영속 데이터) -> PalStatComponent 초기화(레벨/HP/스킬) 필요하면 여기서
 	// if (UPalStatComponent* Stat = Spawned->GetStatComponent()) { Stat->InitFromOwned(Entry); }
 

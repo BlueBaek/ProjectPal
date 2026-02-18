@@ -43,12 +43,16 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category="AI")
 	UBehaviorTree* BT;
 	
+	// 포획(소유) BT
+	UPROPERTY(EditDefaultsOnly, Category="AI")
+	UBehaviorTree* OwnedBT;
 private:
 	// Blackboard 키 이름(통일)
 	static const FName KEY_PalMoveState;
 	static const FName KEY_TargetActor;     // 타겟 Actor
 	static const FName KEY_HomeLocation;    // 배회 기준이 될 위치(스폰지점)
 	static const FName KEY_bDidAggro;
+	static const FName KEY_OwnerActor;
 	
 	// Blackboard 변경 콜백
 	EBlackboardNotificationResult OnMoveStateChanged(const UBlackboardComponent& BBComp, FBlackboard::FKey ChangedKeyID);

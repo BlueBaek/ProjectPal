@@ -128,6 +128,9 @@ protected:
 	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Combat", meta=(AllowPrivateAccess="true"))
 	TObjectPtr<AActor> CurrentTargetActor = nullptr;
 
+	UPROPERTY(VisibleInstanceOnly, BlueprintReadOnly, Category="Pal|Ownership")
+	TObjectPtr<AActor> MasterActor = nullptr;
+	
 public:
 	// 이동 상태 변경 인터페이스
 	void SetMoveState(EPalMoveState NewState);
@@ -186,7 +189,14 @@ public:
 	// 대미지 적용
 	float TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, class AController* EventInstigator,
 	                 AActor* DamageCauser) override;
+	
+	// 주인(마스터) 세팅/조회
+	UFUNCTION(BlueprintCallable, Category="Pal|Ownership")
+	void SetMasterActor(AActor* InMaster) {MasterActor = InMaster;}
 
+	UFUNCTION(BlueprintCallable, Category="Pal|Ownership")
+	AActor* GetMasterActor() const {return MasterActor.Get();}
+	
 private:
 	// 데이터 테이블로부터 팰 정보 Load
 	bool LoadPalData();
