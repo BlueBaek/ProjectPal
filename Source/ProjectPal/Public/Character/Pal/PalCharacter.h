@@ -13,6 +13,8 @@ enum class EPalType : uint8;
 class UDataTable;
 class UAnimMontage;
 class UWidgetComponent;
+class USoundBase;
+class USoundAttenuation;
 
 // 포획 가능 구분용
 UENUM(BlueprintType)
@@ -213,6 +215,13 @@ public:
 
 	void StartRagdoll();
 	
+	UPROPERTY(EditDefaultsOnly, Category="Sound")
+	TObjectPtr<USoundBase> HitSound;
+	
+	UPROPERTY(EditDefaultsOnly, Category="Sound")
+	USoundAttenuation* HitSoundAttenuation = nullptr;
+	
+	void PlayHitSound();
 private:
 	// 데이터 테이블로부터 팰 정보 Load
 	bool LoadPalData();

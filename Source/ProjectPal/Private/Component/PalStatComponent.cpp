@@ -82,6 +82,11 @@ float UPalStatComponent::ApplyDamage(float RawDamage)
 	
 	CurrentHP = FMath::Clamp(CurrentHP - FinalDamage, 0.0f, MaxHP);
 
+	if (APalCharacter* Pal = Cast<APalCharacter>(GetOwner()))
+	{
+		Pal->PlayHitSound();
+	}
+	
 	if (CurrentHP <= 0.f)
 	{
 		OnDeath.Broadcast();

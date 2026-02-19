@@ -12,18 +12,19 @@
 #include "Data/PalData.h"
 #include "DataAsset/PalSkillDataAsset.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Widget/PalNameplateWidget.h"
 
 // Sets default values
 APalCharacter::APalCharacter()
 {
- 	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
+	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = false;
-	
+
 	PalStatComponent = CreateDefaultSubobject<UPalStatComponent>(TEXT("PalStatComponent"));
 	PalSkillComponent = CreateDefaultSubobject<UPalSkillComponent>(TEXT("PalSkillComponent"));
 	NameplateWidgetComp = CreateDefaultSubobject<UWidgetComponent>(TEXT("NameplateWidgetComponent"));
-	
+
 	// 자연스러운 회전
 	// 컨트롤러의 회전값이 폰에 즉각 반영되지 않도록 꺼줍니다.
 	bUseControllerRotationYaw = false;
@@ -31,11 +32,11 @@ APalCharacter::APalCharacter()
 	GetCharacterMovement()->bOrientRotationToMovement = true;
 	// 회전 속도를 제한
 	GetCharacterMovement()->RotationRate = FRotator(0.f, 0.f, 200.f);
-	
+
 	// 팰의 기본 움직임 속도 제한
 	MoveState = EPalMoveState::Wandering;
 	ApplyMoveSpeed();
-	
+
 	// 위젯
 	NameplateWidgetComp->SetupAttachment(GetCapsuleComponent());
 	NameplateWidgetComp->SetDrawAtDesiredSize(true);
@@ -50,7 +51,7 @@ APalCharacter::APalCharacter()
 void APalCharacter::BeginPlay()
 {
 	Super::BeginPlay();
-	
+
 	// PalDT를 기준으로 데이터 로딩
 	const bool bLoaded = LoadPalData();
 	if (!bLoaded)
@@ -58,21 +59,21 @@ void APalCharacter::BeginPlay()
 		UE_LOG(LogTemp, Warning, TEXT("PalCharacter : LoadPalData failed. Stat init skipped. (%s)"), *GetName());
 		return;
 	}
-	
+
 	// 최초 생성 시 스탯 부여
-	if (PalStatComponent)	// PalStatComponent 유효성 검사
+	if (PalStatComponent) // PalStatComponent 유효성 검사
 	{
 		PalStatComponent->SetLevel(PalLevel);
-		
+
 		if (PalDT)
 		{
 			PalStatComponent->InitializeStats(PalDT, PalRowName);
 		}
-		
+
 		// 죽었을 때 구독
 		PalStatComponent->OnDeath.AddUObject(this, &APalCharacter::HandleDeath);
 	}
-	
+
 	// 팰 타입 출력용
 	for (int32 i = 0; i < PalTypes.Num(); ++i)
 	{
@@ -89,18 +90,18 @@ void APalCharacter::BeginPlay()
 			PalTypeString += TEXT(", ");
 		}
 	}
-	
+
 	// === 팰 정보 종합 로그 ===
 	UE_LOG(LogTemp, Warning,
-		TEXT("[Pal] %s (%s) | Type:%s | HP:%d ATK:%d DEF:%d"),
-		*PalDisplayName.ToString(),
-		*PalName.ToString(),
-		*PalTypeString,
-		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetMaxHP()) : -1,
-		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetAttack()) : -1,
-		PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetDefense()) : -1
+	       TEXT("[Pal] %s (%s) | Type:%s | HP:%d ATK:%d DEF:%d"),
+	       *PalDisplayName.ToString(),
+	       *PalName.ToString(),
+	       *PalTypeString,
+	       PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetMaxHP()) : -1,
+	       PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetAttack()) : -1,
+	       PalStatComponent ? FMath::FloorToInt(PalStatComponent->GetDefense()) : -1
 	);
-	
+
 	// 보유 스킬 추가
 	if (UPalSkillComponent* SkillComp = FindComponentByClass<UPalSkillComponent>())
 	{
@@ -113,7 +114,7 @@ void APalCharacter::BeginPlay()
 			}
 		}
 	}
-	
+
 	// 팰 위젯 추가
 	if (NameplateWidgetComp)
 	{
@@ -125,14 +126,12 @@ void APalCharacter::BeginPlay()
 			}
 		}
 	}
-	
 }
 
 // Called every frame
 void APalCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
 }
 
 void APalCharacter::ApplyMoveSpeed()
@@ -145,11 +144,11 @@ void APalCharacter::ApplyMoveSpeed()
 	case EPalMoveState::Wandering:
 		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		break;
-		
+
 	case EPalMoveState::Following:
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 		break;
-		
+
 	case EPalMoveState::RunningAway:
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 		break;
@@ -157,7 +156,7 @@ void APalCharacter::ApplyMoveSpeed()
 	case EPalMoveState::Chasing:
 		GetCharacterMovement()->MaxWalkSpeed = RunSpeed;
 		break;
-		
+
 	case EPalMoveState::StandOff:
 		GetCharacterMovement()->MaxWalkSpeed = WalkSpeed;
 		break;
@@ -175,7 +174,7 @@ void APalCharacter::SetMoveState(EPalMoveState NewState)
 }
 
 float APalCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent,
-	class AController* EventInstigator, AActor* DamageCauser)
+                                class AController* EventInstigator, AActor* DamageCauser)
 {
 	if (!PalStatComponent) return 0.f;
 
@@ -244,6 +243,23 @@ void APalCharacter::StartRagdoll()
 	MeshComp->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 }
 
+void APalCharacter::PlayHitSound()
+{
+	if (!HitSound) return;
+
+	// 거리 감쇠가 적용된 3D 사운드 재생
+	UGameplayStatics::SpawnSoundAtLocation(
+		this,
+		HitSound,
+		GetActorLocation(),
+		FRotator::ZeroRotator,
+		1.f,
+		1.f,
+		0.f,
+		HitSoundAttenuation
+	);
+}
+
 bool APalCharacter::LoadPalData()
 {
 	// PalDT 유/무 검사
@@ -265,7 +281,7 @@ bool APalCharacter::LoadPalData()
 	if (!Row)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("PalCharacter : Row '%s' not found in PalDT. (%s)"),
-			*PalRowName.ToString(), *GetName());
+		       *PalRowName.ToString(), *GetName());
 		return false;
 	}
 
